@@ -10,6 +10,7 @@
     "@types/node": "^12.19.9",
     "@types/react": "^16.14.2",
     "@types/react-dom": "^16.9.10",
+    "lodash.get": "^4.4.2",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
     "react-redux": "^7.2.2",
@@ -53,6 +54,7 @@
     "@storybook/node-logger": "^6.1.11",
     "@storybook/preset-create-react-app": "^3.1.5",
     "@storybook/react": "^6.1.11",
+    "@types/lodash.get": "^4.4.6",
     "@types/react-redux": "^7.1.12",
     "@types/uuid": "^8.3.0"
   }

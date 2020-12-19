@@ -1,9 +1,10 @@
 import {AnyAction, Reducer} from "redux";
-import {OfflineAction, OfflineState} from "./types";
-import {isOfflineAction} from "./utils";
+import {ApiAction, OfflineAction, OfflineState} from "./types";
+import {actionDependsOn, actionHasSideEffect, isOfflineAction} from "./utils";
 
 const initialState: OfflineState = {
   queue: [],
+  processed: [],
   isSyncing: false,
   isRebuilding: false,
 };
@@ -13,6 +14,7 @@ const MARK_ACTION_AS_PROCESSED = 'MARK_ACTION_AS_PROCESSED';
 const REPLACE_OFFLINE_STATE = 'REPLACE_OFFLINE_STATE';
 const OFFLINE_QUEUE_REPLACE_ROOT_STATE = 'OFFLINE_QUEUE_REPLACE_ROOT_STATE';
 const SET_IS_REBUILDING = 'SET_IS_REBUILDING';
+const REMOVE_PROCESSED_ACTIONS = 'REMOVE_PROCESSED_ACTIONS';
 
 export const offlineActions = {
   SET_IS_SYNCING: true,
@@ -20,6 +22,7 @@ export const offlineActions = {
   REPLACE_OFFLINE_STATE: true,
   OFFLINE_QUEUE_REPLACE_ROOT_STATE: true,
   SET_IS_REBUILDING: true,
+  REMOVE_PROCESSED_ACTIONS: true,
 };
 
 export const createRootReducer = (rootReducer: Reducer) => (state: any, action: AnyAction) => {
@@ -31,6 +34,18 @@ export const createRootReducer = (rootReducer: Reducer) => (state: any, action: 
 };
 
 const reducer = (state = initialState, action: AnyAction) => {
+  if (action.type === MARK_ACTION_AS_PROCESSED && !actionDependsOn(action.payload.action)) {
+    return {
+      ...state,
+      queue: state.queue.filter(a => a !== action.payload.action),
+      processed: state.processed.concat([action.payload]),
+    };
+  } else if (action.type === MARK_ACTION_AS_PROCESSED && actionDependsOn(action.payload.action)) {
+    return {
+      ...state,
+      queue: state.queue.filter(a => a !== action.payload.action),
+    };
+  }
   if (isOfflineAction(action)) {
     return {
       ...state,
@@ -46,17 +61,17 @@ const reducer = (state = initialState, action: AnyAction) => {
         ...state,
         isSyncing: action.payload,
       };
-    case MARK_ACTION_AS_PROCESSED:
-      return {
-        ...state,
-        queue: state.queue.filter(a => a !== action.payload),
-      };
     case REPLACE_OFFLINE_STATE:
       return action.payload;
     case SET_IS_REBUILDING:
       return {
         ...state,
         isRebuilding: action.payload,
+      };
+    case REMOVE_PROCESSED_ACTIONS:
+      return {
+        ...state,
+        processed: state.processed.filter(ar => !action.payload.includes(ar)),
       };
     default:
       return state;
@@ -70,11 +85,14 @@ export const setIsSyncing = (isSyncing: boolean) => ({
   payload: isSyncing,
 });
 
-export const markActionAsProcessed = (action: OfflineAction) => {
-  console.log('marking action as processed');
+export const markActionAsProcessed = (action: OfflineAction, response: any) => {
+  console.log('marking action as processed', action);
   return {
     type: MARK_ACTION_AS_PROCESSED,
-    payload: action,
+    payload: {
+      action,
+      response,
+    },
   };
 };
 
@@ -91,4 +109,9 @@ export const replaceRootState = (state: any) => ({
 export const setIsRebuilding = (rebuilding: boolean) => ({
   type: SET_IS_REBUILDING,
   payload: rebuilding,
+});
+
+export const removeProcessedActions = (actions: { action: ApiAction, response: any }[]) => ({
+  type: REMOVE_PROCESSED_ACTIONS,
+  payload: actions,
 });

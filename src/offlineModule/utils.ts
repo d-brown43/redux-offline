@@ -1,10 +1,12 @@
 import {AnyAction} from "redux";
-import {OfflineAction, OfflineMetadata} from "./types";
+import {ApiAction, ApiDependency, OfflineAction} from "./types";
 
 export const isOfflineAction = (action: AnyAction): action is OfflineAction => 'offline' in action;
 
-const makeHasOptionalField = (fieldName: keyof OfflineMetadata) => (action: OfflineAction) => {
-  return fieldName in action.offline;
+export const actionHasSideEffect = (action: OfflineAction): action is ApiAction => {
+  return 'apiData' in action.offline;
 };
 
-export const actionHasSideEffect = makeHasOptionalField('apiData');
+export const actionDependsOn = (action: OfflineAction): action is ApiDependency => {
+  return 'dependsOn' in action.offline;
+};

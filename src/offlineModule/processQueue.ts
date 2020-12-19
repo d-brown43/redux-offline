@@ -1,13 +1,14 @@
 import {applyMiddleware, createStore, Middleware, Reducer, Store} from "redux";
-import {GetOfflineState, OfflineConfig} from "./types";
-import {actionHasSideEffect, isOfflineAction} from "./utils";
+import get from 'lodash.get';
+import {ApiAction, GetOfflineState, OfflineAction, OfflineConfig} from "./types";
+import {actionDependsOn, actionHasSideEffect, isOfflineAction} from "./utils";
 import {
   markActionAsProcessed,
   replaceRootState,
   replaceOfflineState,
   setIsSyncing,
   offlineActions,
-  setIsRebuilding
+  setIsRebuilding, removeProcessedActions
 } from "./redux";
 
 const copyOptimisticToReal = (store: Store, optimisticStore: Store, config: OfflineConfig) => {
@@ -33,6 +34,54 @@ const rebuildOptimisticStore = (
   optimisticStore.dispatch(setIsRebuilding(false));
 };
 
+const getDependentActions = (queue: OfflineAction[], resourceId: any) => {
+  return queue.filter(action => {
+    if (actionDependsOn(action)) {
+      return action.offline.dependsOn === resourceId;
+    }
+    return false;
+  });
+};
+
+const propagateProcessedActions = (
+  optimisticStore: Store,
+  store: Store,
+  config: OfflineConfig,
+) => {
+  const state = config.selector(optimisticStore.getState());
+  const processedActions = state.processed;
+  processedActions.forEach(({action, response}) => {
+    const resourceId = get(action, action.offline.dependencyPath);
+    const dependentQueuedActions = getDependentActions(state.queue, resourceId);
+    if (dependentQueuedActions.length > 0) {
+      console.log('propagating to dependent actions', dependentQueuedActions, action, response);
+      dependentQueuedActions.forEach(dependentAction => {
+        handleOptimisticUpdateFulfilled(
+          optimisticStore,
+          store,
+          dependentAction,
+          response,
+          config,
+        );
+        config.dispatchFulfilledAction(store.dispatch, dependentAction, response);
+      });
+    }
+  });
+  optimisticStore.dispatch(removeProcessedActions(processedActions));
+};
+
+const handleOptimisticUpdateFulfilled = (
+  optimisticStore: Store,
+  store: Store,
+  action: OfflineAction,
+  response: any,
+  config: OfflineConfig,
+) => {
+  optimisticStore.dispatch(markActionAsProcessed(action, response));
+  config.dispatchFulfilledAction(store.dispatch, action, response);
+  propagateProcessedActions(optimisticStore, store, config);
+};
+
 const startSyncing = (
   optimisticStore: Store,
   store: Store,
@@ -50,8 +99,13 @@ const startSyncing = (
         return null;
       })
       .then((response) => {
-        optimisticStore.dispatch(markActionAsProcessed(action));
-        config.dispatchFulfilledAction(store.dispatch, action, response);
+        handleOptimisticUpdateFulfilled(
+          optimisticStore,
+          store,
+          action,
+          response,
+          config,
+        );
         rebuildOptimisticStore(store, optimisticStore, config);
       })
       .then(() => {
