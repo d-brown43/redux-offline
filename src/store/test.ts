@@ -1,7 +1,6 @@
 import {v4 as uuidv4} from 'uuid';
 import {AppAction, AppActionCreator, AppReducer} from "./types";
-import {OfflineAction} from "./offline";
-import {AnyAction} from "redux";
+import {DispatchFulfilledAction, OfflineAction} from "../offlineModule";
 
 export type MyTestObject = {
   id: string
@@ -27,6 +26,18 @@ type CreateTestObject = AppActionCreator<CreateTestObjectArgs, TestObjectAction>
 
 type AllActions = TestObjectAction;
 
+export const optimisticReducer: AppReducer<TestState, AllActions> = (state = initialState, action) => {
+  switch (action.type) {
+    case CREATE_TEST_OBJECT:
+      return {
+        ...state,
+        entities: state.entities.concat([action.payload]),
+      };
+    default:
+      return state;
+  }
+};
+
 const reducer: AppReducer<TestState, AllActions> = (state = initialState, action) => {
   switch (action.type) {
     case CREATE_TEST_OBJECT_RESOLVED:
@@ -34,34 +45,36 @@ const reducer: AppReducer<TestState, AllActions> = (state = initialState, action
         ...state,
         entities: state.entities.concat([action.payload]),
       };
+    default:
+      return state;
   }
-  return state;
 };
 
 export default reducer;
 
+export const dispatchFulfilledActions: DispatchFulfilledAction = (dispatch, optimisticAction, apiResponse) => {
+  switch (optimisticAction.type) {
+    case CREATE_TEST_OBJECT: {
+      dispatch({
+        type: CREATE_TEST_OBJECT_RESOLVED,
+        payload: optimisticAction.payload,
+      });
+    }
+  }
+};
+
 export const createTestObject: CreateTestObject = ({title}) => {
   const now = new Date().toISOString();
-  const actionData = {
+  return {
+    type: CREATE_TEST_OBJECT,
     payload: {
       id: uuidv4(),
       title,
       createdAt: now,
       updatedAt: now,
-    }
-  };
-  return {
-    type: CREATE_TEST_OBJECT,
-    ...actionData,
+    },
     offline: {
       apiData: 'some-api-data',
-      makeFulfilledAction: (apiResponse: any) => {
-        console.log('Deriving the fulfilled action based on api response:', apiResponse);
-        return {
-          type: CREATE_TEST_OBJECT_RESOLVED,
-          ...actionData,
-        };
-      }
     }
   };
 };
