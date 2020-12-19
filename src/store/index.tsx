@@ -1,12 +1,12 @@
 import {AnyAction, createStore, Store} from "redux";
-import rootReducer, {mergedFulfilledHandlers, getOffline, State} from './rootReducer';
-import {run} from "../offlineModule";
+import rootReducer, {rootOptimisticReducer, mergedFulfilledHandlers, getOffline, State} from './rootReducer';
+import {createRootReducer, run} from "../offlineModule";
 
 export type StoreType = Store<State, AnyAction>;
 
 const configureStore = () => {
-  const store: StoreType = createStore(rootReducer);
-  run(store, {
+  const store: StoreType = createStore(createRootReducer(rootReducer));
+  const optimisticStore = run(store, createRootReducer(rootOptimisticReducer), {
     selector: getOffline,
     dispatchFulfilledAction: mergedFulfilledHandlers,
     makeApiRequest: (apiData) => {
@@ -19,7 +19,10 @@ const configureStore = () => {
       });
     },
   });
-  return store;
+  return {
+    store,
+    optimisticStore,
+  };
 };
 
 export default configureStore;

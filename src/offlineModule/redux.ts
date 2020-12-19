@@ -1,4 +1,4 @@
-import {AnyAction} from "redux";
+import {AnyAction, Reducer} from "redux";
 import {OfflineAction, OfflineState} from "./types";
 import {isOfflineAction} from "./utils";
 
@@ -9,6 +9,17 @@ const initialState: OfflineState = {
 
 const SET_IS_SYNCING = 'SET_IS_SYNCING';
 const MARK_ACTION_AS_PROCESSED = 'MARK_ACTION_AS_PROCESSED';
+const REPLACE_STATE = 'REPLACE_STATE';
+
+const OFFLINE_QUEUE_REPLACE_ROOT_STATE = 'OFFLINE_QUEUE_REPLACE_ROOT_STATE';
+
+export const createRootReducer = (rootReducer: Reducer) => (state: any, action: AnyAction) => {
+  let nextState = state;
+  if (action.type === OFFLINE_QUEUE_REPLACE_ROOT_STATE) {
+    nextState = action.payload;
+  }
+  return rootReducer(nextState, action);
+};
 
 const reducer = (state = initialState, action: AnyAction) => {
   if (isOfflineAction(action)) {
@@ -31,6 +42,8 @@ const reducer = (state = initialState, action: AnyAction) => {
         ...state,
         queue: state.queue.filter(a => a !== action.payload),
       };
+    case REPLACE_STATE:
+      return action.payload;
     default:
       return state;
   }
@@ -50,3 +63,13 @@ export const markActionAsProcessed = (action: OfflineAction) => {
     payload: action,
   };
 };
+
+export const replaceState = (state: OfflineState) => ({
+  type: REPLACE_STATE,
+  payload: state,
+});
+
+export const replaceRootState = (state: any) => ({
+  type: OFFLINE_QUEUE_REPLACE_ROOT_STATE,
+  payload: state,
+});

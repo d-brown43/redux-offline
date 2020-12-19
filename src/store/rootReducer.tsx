@@ -12,7 +12,8 @@ export type State = {
 };
 
 export const rootOptimisticReducer = combineReducers({
-  offline: testOptimisticReducer,
+  offline: offlineReducer,
+  test: testOptimisticReducer,
 });
 
 const rootReducer = combineReducers({
