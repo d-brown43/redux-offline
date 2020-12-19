@@ -5,12 +5,22 @@ import {isOfflineAction} from "./utils";
 const initialState: OfflineState = {
   queue: [],
   isSyncing: false,
+  isRebuilding: false,
 };
 
 const SET_IS_SYNCING = 'SET_IS_SYNCING';
 const MARK_ACTION_AS_PROCESSED = 'MARK_ACTION_AS_PROCESSED';
 const REPLACE_OFFLINE_STATE = 'REPLACE_OFFLINE_STATE';
 const OFFLINE_QUEUE_REPLACE_ROOT_STATE = 'OFFLINE_QUEUE_REPLACE_ROOT_STATE';
+const SET_IS_REBUILDING = 'SET_IS_REBUILDING';
+
+export const offlineActions = {
+  SET_IS_SYNCING: true,
+  MARK_ACTION_AS_PROCESSED: true,
+  REPLACE_OFFLINE_STATE: true,
+  OFFLINE_QUEUE_REPLACE_ROOT_STATE: true,
+  SET_IS_REBUILDING: true,
+};
 
 export const createRootReducer = (rootReducer: Reducer) => (state: any, action: AnyAction) => {
   let nextState = state;
@@ -43,6 +53,11 @@ const reducer = (state = initialState, action: AnyAction) => {
       };
     case REPLACE_OFFLINE_STATE:
       return action.payload;
+    case SET_IS_REBUILDING:
+      return {
+        ...state,
+        isRebuilding: action.payload,
+      };
     default:
       return state;
   }
@@ -71,4 +86,9 @@ export const replaceOfflineState = (state: OfflineState) => ({
 export const replaceRootState = (state: any) => ({
   type: OFFLINE_QUEUE_REPLACE_ROOT_STATE,
   payload: state,
+});
+
+export const setIsRebuilding = (rebuilding: boolean) => ({
+  type: SET_IS_REBUILDING,
+  payload: rebuilding,
 });

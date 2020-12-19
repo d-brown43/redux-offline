@@ -11,6 +11,7 @@ export interface OfflineAction extends AnyAction {
 export type OfflineState = {
   queue: AnyAction[]
   isSyncing: boolean
+  isRebuilding: boolean
 }
 
 export type DispatchFulfilledAction = (dispatch: Dispatch, optimisticAction: AnyAction, apiResponse: any) => void;

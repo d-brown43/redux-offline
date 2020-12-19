@@ -1,7 +1,14 @@
-import {createStore, Reducer, Store} from "redux";
+import {applyMiddleware, createStore, Middleware, Reducer, Store} from "redux";
 import {GetOfflineState, OfflineConfig} from "./types";
 import {actionHasSideEffect, isOfflineAction} from "./utils";
-import {markActionAsProcessed, replaceRootState, replaceOfflineState, setIsSyncing} from "./redux";
+import {
+  markActionAsProcessed,
+  replaceRootState,
+  replaceOfflineState,
+  setIsSyncing,
+  offlineActions,
+  setIsRebuilding
+} from "./redux";
 
 const copyOptimisticToReal = (store: Store, optimisticStore: Store, config: OfflineConfig) => {
   const state = config.selector(store.getState());
@@ -17,11 +24,13 @@ const rebuildOptimisticStore = (
   config: OfflineConfig,
 ) => {
   optimisticStore.dispatch(replaceRootState(store.getState()));
+  optimisticStore.dispatch(setIsRebuilding(true));
   const state = config.selector(store.getState());
   state.queue.forEach(optimisticAction => {
     const {offline, ...action} = optimisticAction;
     optimisticStore.dispatch(action);
   });
+  optimisticStore.dispatch(setIsRebuilding(false));
 };
 
 const startSyncing = (
@@ -66,8 +75,21 @@ const makeIsSyncing = (getOfflineState: GetOfflineState) => () => {
   return getOfflineState().isSyncing;
 };
 
+type OptimisticActionSpy = (s: Store, config: OfflineConfig) => Middleware;
+
+const optimisticActionSpy: OptimisticActionSpy = (realStore, config) => store => next => action => {
+  const offlineState = config.selector(store.getState());
+  if (!isOfflineAction(action) && !(action.type in offlineActions) && !offlineState.isRebuilding) {
+    realStore.dispatch(action);
+    rebuildOptimisticStore(realStore, (store as Store), config);
+  } else {
+    return next(action);
+  }
+};
+
 const run = (store: Store, rootOptimisticReducer: Reducer, config: OfflineConfig) => {
-  const optimisticStore = createStore(rootOptimisticReducer);
+  const optimisticMiddleware = applyMiddleware(optimisticActionSpy(store, config));
+  const optimisticStore = createStore(rootOptimisticReducer, optimisticMiddleware);
 
   const getOfflineState = makeGetOfflineState(optimisticStore, config);
   const hasActionsToProcess = makeHasActionsToProcess(getOfflineState);
