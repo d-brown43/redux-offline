@@ -9,8 +9,7 @@ const initialState: OfflineState = {
 
 const SET_IS_SYNCING = 'SET_IS_SYNCING';
 const MARK_ACTION_AS_PROCESSED = 'MARK_ACTION_AS_PROCESSED';
-const REPLACE_STATE = 'REPLACE_STATE';
-
+const REPLACE_OFFLINE_STATE = 'REPLACE_OFFLINE_STATE';
 const OFFLINE_QUEUE_REPLACE_ROOT_STATE = 'OFFLINE_QUEUE_REPLACE_ROOT_STATE';
 
 export const createRootReducer = (rootReducer: Reducer) => (state: any, action: AnyAction) => {
@@ -42,7 +41,7 @@ const reducer = (state = initialState, action: AnyAction) => {
         ...state,
         queue: state.queue.filter(a => a !== action.payload),
       };
-    case REPLACE_STATE:
+    case REPLACE_OFFLINE_STATE:
       return action.payload;
     default:
       return state;
@@ -64,8 +63,8 @@ export const markActionAsProcessed = (action: OfflineAction) => {
   };
 };
 
-export const replaceState = (state: OfflineState) => ({
-  type: REPLACE_STATE,
+export const replaceOfflineState = (state: OfflineState) => ({
+  type: REPLACE_OFFLINE_STATE,
   payload: state,
 });
 
