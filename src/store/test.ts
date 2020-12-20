@@ -1,5 +1,5 @@
 import {AppAction, AppActionCreator, AppReducer} from "./types";
-import {DispatchFulfilledAction, OfflineAction, OptimisticPassthrough} from "../offlineModule";
+import {GetFulfilledAction, OfflineAction, OptimisticPassthrough} from "../offlineModule";
 import {getTempId} from "../utils";
 import {API_CREATE_TEST_OBJECT} from "./api";
 
@@ -81,20 +81,26 @@ const reducer: AppReducer<TestState> = (state = initialState, action) => {
 
 export default reducer;
 
-export const dispatchFulfilledActions: DispatchFulfilledAction = (dispatch, optimisticAction, apiResponse) => {
+export const getFulfilledActions: GetFulfilledAction = (optimisticAction, apiResponse) => {
   switch (optimisticAction.type) {
     case CREATE_TEST_OBJECT:
-      dispatch({
+      return {
         type: CREATE_TEST_OBJECT_RESOLVED,
         payload: apiResponse,
-      });
-      break;
+        offline: {
+          dependencyPath: optimisticAction.offline.dependencyPath,
+        }
+      };
     case SET_CURRENT_OBJECT:
-      dispatch({
+      return {
         type: SET_CURRENT_OBJECT_RESOLVED,
         payload: apiResponse.id,
-      });
-      break;
+        offline: {
+          dependencyPath: optimisticAction.offline.dependencyPath,
+        }
+      };
+    default:
+      return null;
   }
 };
 
@@ -141,6 +147,6 @@ export const setCurrentObject: CreateSetCurrentObject = (objectId) => ({
   type: SET_CURRENT_OBJECT,
   payload: objectId,
   offline: {
-    dependsOn: objectId,
+    dependsOn: 'payload',
   }
 });

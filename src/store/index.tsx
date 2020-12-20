@@ -1,21 +1,21 @@
 import {AnyAction, createStore, Store} from "redux";
 import rootReducer, {
   rootOptimisticReducer,
-  mergedFulfilledHandlers,
   getOffline,
   State,
-  mergedPassthroughs
+  mergedPassthroughs,
+  mergedGetFulfilledAction
 } from './rootReducer';
-import {createRootReducer, run} from "../offlineModule";
+import {run} from "../offlineModule";
 import api from "./api";
 
 export type StoreType = Store<State, AnyAction>;
 
 const configureStore = () => {
-  const store: StoreType = createStore(createRootReducer(rootReducer));
-  const optimisticStore = run(store, createRootReducer(rootOptimisticReducer), {
+  const store: StoreType = createStore(rootReducer);
+  const optimisticStore = run(store, rootOptimisticReducer, {
     selector: getOffline,
-    dispatchFulfilledAction: mergedFulfilledHandlers,
+    getFulfilledAction: mergedGetFulfilledAction,
     optimisticPassthrough: mergedPassthroughs,
     makeApiRequest: api,
   });

@@ -4,7 +4,6 @@ import {isDependentAction, actionHasSideEffect, isOfflineAction} from "./utils";
 
 const initialState: OfflineState = {
   queue: [],
-  processed: [],
   isSyncing: false,
   isRebuilding: false,
 };
@@ -14,7 +13,7 @@ const MARK_ACTION_AS_PROCESSED = 'MARK_ACTION_AS_PROCESSED';
 const REPLACE_OFFLINE_STATE = 'REPLACE_OFFLINE_STATE';
 const OFFLINE_QUEUE_REPLACE_ROOT_STATE = 'OFFLINE_QUEUE_REPLACE_ROOT_STATE';
 const SET_IS_REBUILDING = 'SET_IS_REBUILDING';
-const REMOVE_PROCESSED_ACTIONS = 'REMOVE_PROCESSED_ACTIONS';
+const REPLACE_ACTION_IN_QUEUE = 'REPLACE_ACTION_IN_QUEUE';
 
 export const offlineActions = {
   SET_IS_SYNCING: true,
@@ -22,7 +21,7 @@ export const offlineActions = {
   REPLACE_OFFLINE_STATE: true,
   OFFLINE_QUEUE_REPLACE_ROOT_STATE: true,
   SET_IS_REBUILDING: true,
-  REMOVE_PROCESSED_ACTIONS: true,
+  REPLACE_ACTION_IN_QUEUE: true,
 };
 
 export const createRootReducer = (rootReducer: Reducer) => (state: any, action: AnyAction) => {
@@ -33,14 +32,8 @@ export const createRootReducer = (rootReducer: Reducer) => (state: any, action: 
   return rootReducer(nextState, action);
 };
 
-const reducer = (state = initialState, action: AnyAction) => {
-  if (action.type === MARK_ACTION_AS_PROCESSED && !isDependentAction(action.payload.action)) {
-    return {
-      ...state,
-      queue: state.queue.filter(a => a !== action.payload.action),
-      processed: state.processed.concat([action.payload]),
-    };
-  } else if (action.type === MARK_ACTION_AS_PROCESSED && isDependentAction(action.payload.action)) {
+export const reducer = (state = initialState, action: AnyAction) => {
+  if (action.type === MARK_ACTION_AS_PROCESSED) {
     return {
       ...state,
       queue: state.queue.filter(a => a !== action.payload.action),
@@ -68,10 +61,12 @@ const reducer = (state = initialState, action: AnyAction) => {
         ...state,
         isRebuilding: action.payload,
       };
-    case REMOVE_PROCESSED_ACTIONS:
+    case REPLACE_ACTION_IN_QUEUE:
+      const queue = [...state.queue];
+      queue[action.payload.index] = action.payload.action;
       return {
         ...state,
-        processed: state.processed.filter(ar => !action.payload.includes(ar)),
+        queue,
       };
     default:
       return state;
@@ -111,7 +106,10 @@ export const setIsRebuilding = (rebuilding: boolean) => ({
   payload: rebuilding,
 });
 
-export const removeProcessedActions = (actions: { action: ApiAction, response: any }[]) => ({
-  type: REMOVE_PROCESSED_ACTIONS,
-  payload: actions,
+export const replaceActionInQueue = (index: number, action: OfflineAction) => ({
+  type: REPLACE_ACTION_IN_QUEUE,
+  payload: {
+    index,
+    action,
+  }
 });

@@ -1,14 +1,14 @@
 import testReducer, {
   TestState,
-  dispatchFulfilledActions,
+  getFulfilledActions,
   optimisticReducer as testOptimisticReducer,
   optimisticPassthrough
 } from './test';
 import {combineReducers} from "redux";
-import {mergeFulfilledHandlers, mergePassthroughs, offlineReducer, OfflineState} from "../offlineModule";
+import {mergeGetFulfilledActions, mergePassthroughs, offlineReducer, OfflineState} from "../offlineModule";
 
-export const mergedFulfilledHandlers = mergeFulfilledHandlers(
-  dispatchFulfilledActions,
+export const mergedGetFulfilledAction = mergeGetFulfilledActions(
+  getFulfilledActions,
 );
 
 export const mergedPassthroughs = mergePassthroughs(
@@ -26,7 +26,6 @@ export const rootOptimisticReducer = combineReducers({
 });
 
 const rootReducer = combineReducers({
-  offline: offlineReducer,
   test: testReducer,
 });
 

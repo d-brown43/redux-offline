@@ -1,6 +1,6 @@
 import {applyMiddleware, createStore, Middleware, Reducer, Store} from "redux";
-import get from 'lodash.get';
-import {ApiAction, ApiDependency, GetOfflineState, OfflineAction, OfflineConfig, OfflineState} from "./types";
+import _ from 'lodash';
+import {ApiAction, ApiDependentAction, ApiResourceAction, GetOfflineState, OfflineAction, OfflineConfig} from "./types";
 import {isDependentAction, actionHasSideEffect, isOfflineAction} from "./utils";
 import {
   markActionAsProcessed,
@@ -8,15 +8,16 @@ import {
   replaceOfflineState,
   setIsSyncing,
   offlineActions,
-  setIsRebuilding, removeProcessedActions
+  setIsRebuilding,
+  replaceActionInQueue,
+  createRootReducer,
+  reducer,
 } from "./redux";
 
-const copyOptimisticToReal = (store: Store, optimisticStore: Store, config: OfflineConfig) => {
-  const state = config.selector(store.getState());
-  const optimisticState = config.selector(optimisticStore.getState());
-  if (state !== optimisticState) {
-    store.dispatch(replaceOfflineState(optimisticState));
-  }
+type GetState = (store: Store) => any;
+
+const makeGetState = (config: OfflineConfig) => (store: Store) => {
+  return config.selector(store.getState());
 };
 
 const rebuildOptimisticStore = (
@@ -24,56 +25,53 @@ const rebuildOptimisticStore = (
   optimisticStore: Store,
   config: OfflineConfig,
 ) => {
+  const offlineState = config.selector(optimisticStore.getState());
+  console.log('before offline state', offlineState);
   optimisticStore.dispatch(replaceRootState(store.getState()));
-  optimisticStore.dispatch(setIsRebuilding(true));
-  const state = config.selector(store.getState());
-  state.queue.forEach(optimisticAction => {
+  const offlineStateLoading = reducer(offlineState, setIsRebuilding(true));
+  optimisticStore.dispatch(replaceOfflineState(offlineStateLoading));
+  offlineState.queue.forEach(optimisticAction => {
     const {offline, ...action} = optimisticAction;
     optimisticStore.dispatch(action);
   });
   optimisticStore.dispatch(setIsRebuilding(false));
+  console.log('after offline state', config.selector(optimisticStore.getState()));
 };
 
-const getDependentActions = (queue: OfflineAction[], resourceId: any) => {
-  return queue.filter(action => {
-    return isDependentAction(action) && action.offline.dependsOn === resourceId;
-  });
+const getResourceId = (action: ApiAction | ApiResourceAction) => _.get(action, action.offline.dependencyPath);
+const getDependency = (action: ApiDependentAction) => _.get(action, action.offline.dependsOn);
+
+const updateDependency = (action: ApiDependentAction, fulfilledAction: ApiResourceAction) => {
+  return _.setWith(_.clone(action), action.offline.dependsOn, getResourceId(fulfilledAction), _.clone);
 };
 
-const getResourceId = (action: ApiAction) => get(action, action.offline.dependencyPath);
+const actionDependsOn = (action: ApiAction, dependentAction: ApiDependentAction) => {
+  return getResourceId(action) === getDependency(dependentAction);
+};
 
-const propagateProcessedActions = (
-  optimisticStore: Store,
-  store: Store,
-  config: OfflineConfig,
-) => {
-  const state = config.selector(optimisticStore.getState());
-  const processedActions = state.processed;
-  processedActions.forEach(({action, response}) => {
-    const resourceId = getResourceId(action);
-    getDependentActions(state.queue, resourceId).forEach(dependentAction => {
-      handleOptimisticUpdateFulfilled(
-        optimisticStore,
-        store,
-        dependentAction,
-        response,
-        config,
-      );
-    });
+const updateDependentActions = (optimisticAction: ApiAction, fulfilledAction: ApiResourceAction, optimisticStore: Store, getState: GetState) => {
+  const queue: OfflineAction[] = getState(optimisticStore).queue;
+  queue.forEach((action, index) => {
+    if (isDependentAction(action) && actionDependsOn(optimisticAction, action)) {
+      optimisticStore.dispatch(replaceActionInQueue(index, updateDependency(action, fulfilledAction)));
+    }
   });
-  optimisticStore.dispatch(removeProcessedActions(processedActions));
 };
 
 const handleOptimisticUpdateFulfilled = (
   optimisticStore: Store,
   store: Store,
-  action: OfflineAction,
+  action: ApiAction,
   response: any,
   config: OfflineConfig,
+  getState: GetState,
 ) => {
   optimisticStore.dispatch(markActionAsProcessed(action, response));
-  config.dispatchFulfilledAction(store.dispatch, action, response);
-  propagateProcessedActions(optimisticStore, store, config);
+  const fulfilledAction = config.getFulfilledAction(action, response);
+  if (fulfilledAction) {
+    store.dispatch(fulfilledAction);
+    updateDependentActions(action, fulfilledAction, optimisticStore, getState);
+  }
 };
 
 const handlePassthroughs = (
@@ -90,6 +88,7 @@ const syncNextPendingAction = (
   optimisticStore: Store,
   store: Store,
   config: OfflineConfig,
+  getState: GetState,
 ): Promise<any> => {
   const state = config.selector(optimisticStore.getState());
   if (state.queue.length === 0) return Promise.resolve();
@@ -108,16 +107,14 @@ const syncNextPendingAction = (
       config,
     );
     rebuildOptimisticStore(store, optimisticStore, config);
-    return Promise.resolve();
+    return syncNextPendingAction(optimisticStore, store, config, getState);
   }
 
-  return Promise.resolve()
-    .then(() => {
-      if (actionHasSideEffect(action)) {
-        return config.makeApiRequest(action.offline.apiData);
-      }
-      return null;
-    })
+  if (!actionHasSideEffect(action)) {
+    throw new Error(`Unexpected action found in queue: ${JSON.stringify(action)}`);
+  }
+
+  return config.makeApiRequest(action.offline.apiData)
     .then((response) => {
       handleOptimisticUpdateFulfilled(
         optimisticStore,
@@ -125,11 +122,12 @@ const syncNextPendingAction = (
         action,
         response,
         config,
+        getState,
       );
       rebuildOptimisticStore(store, optimisticStore, config);
     })
     .then(() => {
-      return syncNextPendingAction(optimisticStore, store, config);
+      return syncNextPendingAction(optimisticStore, store, config, getState);
     });
 };
 
@@ -163,24 +161,22 @@ const optimisticActionSpy: OptimisticActionSpy = (realStore, config) => store =>
 
 const run = (store: Store, rootOptimisticReducer: Reducer, config: OfflineConfig) => {
   const optimisticMiddleware = applyMiddleware(optimisticActionSpy(store, config));
-  const optimisticStore = createStore(rootOptimisticReducer, optimisticMiddleware);
+  const optimisticStore = createStore(createRootReducer(rootOptimisticReducer), optimisticMiddleware);
 
   const getOfflineState = makeGetOfflineState(optimisticStore, config);
   const hasActionsToProcess = makeHasActionsToProcess(getOfflineState);
   const isSyncing = makeIsSyncing(getOfflineState);
+
+  const getState = makeGetState(config);
 
   const setSyncing = (isSyncing: boolean) => {
     optimisticStore.dispatch(setIsSyncing(isSyncing));
   };
 
   optimisticStore.subscribe(() => {
-    copyOptimisticToReal(store, optimisticStore, config);
-  });
-
-  optimisticStore.subscribe(() => {
     if (hasActionsToProcess() && !isSyncing()) {
       setSyncing(true);
-      syncNextPendingAction(optimisticStore, store, config);
+      syncNextPendingAction(optimisticStore, store, config, getState);
     } else if (!hasActionsToProcess() && isSyncing()) {
       setSyncing(false);
     }
