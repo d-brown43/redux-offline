@@ -1,7 +1,7 @@
 import {applyMiddleware, createStore, Middleware, Reducer, Store} from "redux";
 import get from 'lodash.get';
-import {ApiAction, GetOfflineState, OfflineAction, OfflineConfig} from "./types";
-import {actionDependsOn, actionHasSideEffect, isOfflineAction} from "./utils";
+import {ApiAction, ApiDependency, GetOfflineState, OfflineAction, OfflineConfig, OfflineState} from "./types";
+import {isDependentAction, actionHasSideEffect, isOfflineAction} from "./utils";
 import {
   markActionAsProcessed,
   replaceRootState,
@@ -36,12 +36,11 @@ const rebuildOptimisticStore = (
 
 const getDependentActions = (queue: OfflineAction[], resourceId: any) => {
   return queue.filter(action => {
-    if (actionDependsOn(action)) {
-      return action.offline.dependsOn === resourceId;
-    }
-    return false;
+    return isDependentAction(action) && action.offline.dependsOn === resourceId;
   });
 };
+
+const getResourceId = (action: ApiAction) => get(action, action.offline.dependencyPath);
 
 const propagateProcessedActions = (
   optimisticStore: Store,
@@ -51,21 +50,16 @@ const propagateProcessedActions = (
   const state = config.selector(optimisticStore.getState());
   const processedActions = state.processed;
   processedActions.forEach(({action, response}) => {
-    const resourceId = get(action, action.offline.dependencyPath);
-    const dependentQueuedActions = getDependentActions(state.queue, resourceId);
-    if (dependentQueuedActions.length > 0) {
-      console.log('propagating to dependent actions', dependentQueuedActions, action, response);
-      dependentQueuedActions.forEach(dependentAction => {
-        handleOptimisticUpdateFulfilled(
-          optimisticStore,
-          store,
-          dependentAction,
-          response,
-          config,
-        );
-        config.dispatchFulfilledAction(store.dispatch, dependentAction, response);
-      });
-    }
+    const resourceId = getResourceId(action);
+    getDependentActions(state.queue, resourceId).forEach(dependentAction => {
+      handleOptimisticUpdateFulfilled(
+        optimisticStore,
+        store,
+        dependentAction,
+        response,
+        config,
+      );
+    });
   });
   optimisticStore.dispatch(removeProcessedActions(processedActions));
 };
@@ -82,7 +76,17 @@ const handleOptimisticUpdateFulfilled = (
   propagateProcessedActions(optimisticStore, store, config);
 };
 
-const startSyncing = (
+const handlePassthroughs = (
+  optimisticStore: Store,
+  store: Store,
+  action: OfflineAction,
+  config: OfflineConfig,
+) => {
+  optimisticStore.dispatch(markActionAsProcessed(action, null));
+  config.optimisticPassthrough(store.dispatch, action);
+};
+
+const syncNextPendingAction = (
   optimisticStore: Store,
   store: Store,
   config: OfflineConfig,
@@ -90,30 +94,43 @@ const startSyncing = (
   const state = config.selector(optimisticStore.getState());
   if (state.queue.length === 0) return Promise.resolve();
   const action = state.queue[0];
-  if (isOfflineAction(action)) {
-    return Promise.resolve()
-      .then(() => {
-        if (actionHasSideEffect(action)) {
-          return config.makeApiRequest(action.offline.apiData);
-        }
-        return null;
-      })
-      .then((response) => {
-        handleOptimisticUpdateFulfilled(
-          optimisticStore,
-          store,
-          action,
-          response,
-          config,
-        );
-        rebuildOptimisticStore(store, optimisticStore, config);
-      })
-      .then(() => {
-        return startSyncing(optimisticStore, store, config);
-      });
-  } else {
-    throw new Error(`Unexpected action found in offline queue ${JSON.stringify(action, null, 2)}`);
+
+  if (isDependentAction(action)) {
+    // If it's labelled as a dependent action, but is the first
+    // action in the queue, this means the data its dependent on is actually
+    // real data and not temporary data, meaning we can dispatch the real
+    // action immediately. We don't know what the final action is however,
+    // so we pass control back to the app
+    handlePassthroughs(
+      optimisticStore,
+      store,
+      action,
+      config,
+    );
+    rebuildOptimisticStore(store, optimisticStore, config);
+    return Promise.resolve();
   }
+
+  return Promise.resolve()
+    .then(() => {
+      if (actionHasSideEffect(action)) {
+        return config.makeApiRequest(action.offline.apiData);
+      }
+      return null;
+    })
+    .then((response) => {
+      handleOptimisticUpdateFulfilled(
+        optimisticStore,
+        store,
+        action,
+        response,
+        config,
+      );
+      rebuildOptimisticStore(store, optimisticStore, config);
+    })
+    .then(() => {
+      return syncNextPendingAction(optimisticStore, store, config);
+    });
 };
 
 const makeGetOfflineState = (store: Store, config: OfflineConfig) => () => {
@@ -133,11 +150,14 @@ type OptimisticActionSpy = (s: Store, config: OfflineConfig) => Middleware;
 
 const optimisticActionSpy: OptimisticActionSpy = (realStore, config) => store => next => action => {
   const offlineState = config.selector(store.getState());
-  if (!isOfflineAction(action) && !(action.type in offlineActions) && !offlineState.isRebuilding) {
+
+  const isNonOfflineAction = !isOfflineAction(action) && !(action.type in offlineActions) && !offlineState.isRebuilding;
+
+  if (isNonOfflineAction) {
     realStore.dispatch(action);
     rebuildOptimisticStore(realStore, (store as Store), config);
   } else {
-    return next(action);
+    next(action);
   }
 };
 
@@ -160,7 +180,7 @@ const run = (store: Store, rootOptimisticReducer: Reducer, config: OfflineConfig
   optimisticStore.subscribe(() => {
     if (hasActionsToProcess() && !isSyncing()) {
       setSyncing(true);
-      startSyncing(optimisticStore, store, config);
+      syncNextPendingAction(optimisticStore, store, config);
     } else if (!hasActionsToProcess() && isSyncing()) {
       setSyncing(false);
     }

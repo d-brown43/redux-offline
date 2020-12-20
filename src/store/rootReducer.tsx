@@ -1,9 +1,18 @@
-import testReducer, {TestState, dispatchFulfilledActions, optimisticReducer as testOptimisticReducer} from './test';
+import testReducer, {
+  TestState,
+  dispatchFulfilledActions,
+  optimisticReducer as testOptimisticReducer,
+  optimisticPassthrough
+} from './test';
 import {combineReducers} from "redux";
-import {mergeFulfilledHandlers, offlineReducer, OfflineState} from "../offlineModule";
+import {mergeFulfilledHandlers, mergePassthroughs, offlineReducer, OfflineState} from "../offlineModule";
 
 export const mergedFulfilledHandlers = mergeFulfilledHandlers(
   dispatchFulfilledActions,
+);
+
+export const mergedPassthroughs = mergePassthroughs(
+  optimisticPassthrough,
 );
 
 export type State = {

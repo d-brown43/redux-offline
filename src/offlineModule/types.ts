@@ -15,21 +15,28 @@ export interface OfflineAction extends AnyAction {
   offline: OfflineMetadata
 }
 
-export interface ApiAction extends OfflineAction { offline: ApiEntity }
-export interface ApiDependency extends OfflineAction { offline: DependsOn }
+export interface ApiAction extends OfflineAction {
+  offline: ApiEntity
+}
+
+export interface ApiDependency extends OfflineAction {
+  offline: DependsOn
+}
 
 export type OfflineState = {
-  queue: ApiAction[]
+  queue: OfflineAction[]
   processed: { action: ApiAction, response: any }[]
   isSyncing: boolean
   isRebuilding: boolean
 }
 
 export type DispatchFulfilledAction = (dispatch: Dispatch, optimisticAction: AnyAction, apiResponse: any) => void;
+export type OptimisticPassthrough = (dispatch: Dispatch, optimisticAction: AnyAction) => void;
 
 export type OfflineConfig = {
   selector: (state: any) => OfflineState
   dispatchFulfilledAction: DispatchFulfilledAction,
+  optimisticPassthrough: OptimisticPassthrough,
   makeApiRequest: (apiData: any) => Promise<any>;
 }
 

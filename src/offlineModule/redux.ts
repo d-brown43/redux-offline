@@ -1,6 +1,6 @@
 import {AnyAction, Reducer} from "redux";
 import {ApiAction, OfflineAction, OfflineState} from "./types";
-import {actionDependsOn, actionHasSideEffect, isOfflineAction} from "./utils";
+import {isDependentAction, actionHasSideEffect, isOfflineAction} from "./utils";
 
 const initialState: OfflineState = {
   queue: [],
@@ -34,13 +34,13 @@ export const createRootReducer = (rootReducer: Reducer) => (state: any, action: 
 };
 
 const reducer = (state = initialState, action: AnyAction) => {
-  if (action.type === MARK_ACTION_AS_PROCESSED && !actionDependsOn(action.payload.action)) {
+  if (action.type === MARK_ACTION_AS_PROCESSED && !isDependentAction(action.payload.action)) {
     return {
       ...state,
       queue: state.queue.filter(a => a !== action.payload.action),
       processed: state.processed.concat([action.payload]),
     };
-  } else if (action.type === MARK_ACTION_AS_PROCESSED && actionDependsOn(action.payload.action)) {
+  } else if (action.type === MARK_ACTION_AS_PROCESSED && isDependentAction(action.payload.action)) {
     return {
       ...state,
       queue: state.queue.filter(a => a !== action.payload.action),

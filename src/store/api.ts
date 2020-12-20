@@ -1,4 +1,6 @@
-import {v4 as uuidv4} from 'uuid';
+import {getMockRealId} from "../utils";
+
+export const API_CREATE_TEST_OBJECT = 'API_CREATE_TEST_OBJECT';
 
 type ApiData = {
   type: string;
@@ -6,8 +8,11 @@ type ApiData = {
 }
 
 const fakeApi = (apiData: ApiData) => {
-  if (apiData.type === 'test_object') {
-    return uuidv4();
+  if (apiData.type === API_CREATE_TEST_OBJECT) {
+    return {
+      ...apiData.data,
+      id: getMockRealId(),
+    };
   }
   return null;
 };
