@@ -1,5 +1,10 @@
 import {AppAction, AppActionCreator, AppReducer} from "./types";
-import {GetFulfilledAction, OfflineAction, OptimisticPassThrough} from "../offlineModule";
+import {
+  ApiAction,
+  GetFulfilledAction,
+  OfflineAction,
+  OptimisticPassThrough
+} from "../offlineModule";
 import {getTempId} from "../utils";
 import {API_CREATE_TEST_OBJECT} from "./api";
 
@@ -81,40 +86,6 @@ const reducer: AppReducer<TestState> = (state = initialState, action) => {
 
 export default reducer;
 
-export const getFulfilledActions: GetFulfilledAction = (optimisticAction, apiResponse) => {
-  switch (optimisticAction.type) {
-    case CREATE_TEST_OBJECT:
-      return {
-        type: CREATE_TEST_OBJECT_RESOLVED,
-        payload: apiResponse,
-        offline: {
-          dependencyPath: optimisticAction.offline.dependencyPath,
-        }
-      };
-    case SET_CURRENT_OBJECT:
-      return {
-        type: SET_CURRENT_OBJECT_RESOLVED,
-        payload: apiResponse.id,
-        offline: {
-          dependencyPath: optimisticAction.offline.dependencyPath,
-        }
-      };
-    default:
-      return null;
-  }
-};
-
-export const optimisticPassThrough: OptimisticPassThrough = (dispatch, optimisticAction) => {
-  switch (optimisticAction.type) {
-    case SET_CURRENT_OBJECT:
-      dispatch({
-        type: SET_CURRENT_OBJECT_RESOLVED,
-        payload: optimisticAction.payload,
-      });
-      break;
-  }
-};
-
 export const createTestObject: CreateTestObject = ({title}) => {
   const now = new Date().toISOString();
   const payloadData = {
@@ -138,6 +109,14 @@ export const createTestObject: CreateTestObject = ({title}) => {
   };
 };
 
+const createTestObjectResolved = (testObject: MyTestObject) => ({
+  type: CREATE_TEST_OBJECT_RESOLVED,
+  payload: testObject,
+  offline: {
+    dependencyPath: 'payload.id',
+  }
+});
+
 export const nonOptimisticToggle: CreateNonOptimisticToggle = (isOn) => ({
   type: NON_OPTIMISTIC_TOGGLE,
   payload: isOn,
@@ -150,3 +129,31 @@ export const setCurrentObject: CreateSetCurrentObject = (objectId) => ({
     dependsOn: 'payload',
   }
 });
+
+const setCurrentObjectResolved = (objectId: string) => ({
+  type: SET_CURRENT_OBJECT_RESOLVED,
+  payload: objectId,
+  offline: {
+    dependencyPath: 'payload',
+  }
+});
+
+export const getFulfilledActions: GetFulfilledAction = (optimisticAction, apiResponse) => {
+  switch (optimisticAction.type) {
+    case CREATE_TEST_OBJECT:
+      return createTestObjectResolved(apiResponse);
+    case SET_CURRENT_OBJECT:
+      return setCurrentObjectResolved(apiResponse.id);
+    default:
+      return null;
+  }
+};
+
+export const optimisticPassThrough: OptimisticPassThrough = (optimisticAction) => {
+  switch (optimisticAction.type) {
+    case SET_CURRENT_OBJECT:
+      return setCurrentObjectResolved(optimisticAction.payload);
+    default:
+      return null;
+  }
+};

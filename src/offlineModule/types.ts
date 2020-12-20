@@ -1,4 +1,4 @@
-import {AnyAction, Dispatch} from "redux";
+import {AnyAction} from "redux";
 
 export interface ApiResourceMetadata {
   dependencyPath: string
@@ -37,7 +37,7 @@ export type OfflineState = {
 }
 
 export type GetFulfilledAction = (optimisticAction: ApiAction, apiResponse: any) => ApiResourceAction | null;
-export type OptimisticPassThrough = (dispatch: Dispatch, optimisticAction: AnyAction) => void;
+export type OptimisticPassThrough = (optimisticAction: ApiDependentAction) => AnyAction | null;
 
 export type OfflineConfig = {
   selector: (state: any) => OfflineState
@@ -45,5 +45,3 @@ export type OfflineConfig = {
   optimisticPassThrough: OptimisticPassThrough,
   makeApiRequest: (apiData: any) => Promise<any>;
 }
-
-export type GetOfflineState = () => OfflineState;

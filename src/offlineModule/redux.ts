@@ -1,6 +1,6 @@
 import {AnyAction, Reducer} from "redux";
-import {ApiAction, OfflineAction, OfflineState} from "./types";
-import {isDependentAction, actionHasSideEffect, isOfflineAction} from "./utils";
+import {OfflineAction, OfflineState} from "./types";
+import {isOfflineAction} from "./utils";
 
 const initialState: OfflineState = {
   queue: [],

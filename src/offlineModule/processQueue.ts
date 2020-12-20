@@ -84,11 +84,16 @@ const handleOptimisticUpdateResolved = (
   }
 };
 
-const handlePassthroughs = (internalConfig: InternalConfig, action: OfflineAction) => {
+const handlePassthroughs = (internalConfig: InternalConfig, action: ApiDependentAction) => {
   const {optimisticStore, config, store} = internalConfig;
   optimisticStore.dispatch(markActionAsProcessed(action, null));
-  config.optimisticPassThrough(store.dispatch, action);
-  rebuildOptimisticStore(internalConfig);
+  const nextAction = config.optimisticPassThrough(action);
+  if (nextAction) {
+    store.dispatch(nextAction);
+    rebuildOptimisticStore(internalConfig);
+  } else {
+    console.warn('No passthrough action found for optimistic dependent action', action);
+  }
 };
 
 const syncNextPendingAction = (internalConfig: InternalConfig): Promise<any> => {

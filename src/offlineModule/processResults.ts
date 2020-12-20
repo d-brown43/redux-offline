@@ -16,10 +16,12 @@ export const mergeGetFulfilledActions = (...handlers: GetFulfilledAction[]) => {
   return merged;
 };
 
-export const mergePassthroughs = (...handlers: OptimisticPassThrough[]) => {
-  const merged: OptimisticPassThrough = (dispatch, action) => {
-    handlers.forEach(handler => handler(dispatch, action));
+export const mergePassthroughs = (...handlers: OptimisticPassThrough[]): OptimisticPassThrough => {
+  return (action) => {
+    const result = handlers
+      .map((handler) => handler(action))
+      .find(result => result);
+    if (result) return result;
+    return null;
   };
-
-  return merged;
 };
