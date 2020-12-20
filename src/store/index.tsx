@@ -1,24 +1,29 @@
-import {AnyAction, createStore, Store} from "redux";
+import {AnyAction, applyMiddleware, createStore, Store} from "redux";
 import rootReducer, {
-  rootOptimisticReducer,
   getOffline,
   State,
-  mergedPassthroughs,
   mergedGetFulfilledAction
 } from './rootReducer';
-import {run} from "../offlineModule";
+import configure, {createRootReducer} from "../offlineModule";
 import api from "./api";
 
 export type StoreType = Store<State, AnyAction>;
 
 const configureStore = () => {
-  const store: StoreType = createStore(rootReducer);
-  const optimisticStore = run(store, rootOptimisticReducer, {
+  const {run, optimisticMiddleware} = configure({
     selector: getOffline,
     getFulfilledAction: mergedGetFulfilledAction,
-    optimisticPassThrough: mergedPassthroughs,
     makeApiRequest: api,
+    rootReducer,
   });
+
+  const optimisticStore: StoreType = createStore(
+    createRootReducer(rootReducer),
+    applyMiddleware(optimisticMiddleware)
+  );
+
+  const store = run(optimisticStore);
+
   return {
     store,
     optimisticStore,

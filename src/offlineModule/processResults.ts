@@ -1,4 +1,4 @@
-import {GetFulfilledAction, OptimisticPassThrough} from "./types";
+import {GetFulfilledAction} from "./types";
 
 export const mergeGetFulfilledActions = (...handlers: GetFulfilledAction[]) => {
   const merged: GetFulfilledAction = (optimisticAction, apiResponse) => {
@@ -14,14 +14,4 @@ export const mergeGetFulfilledActions = (...handlers: GetFulfilledAction[]) => {
   };
 
   return merged;
-};
-
-export const mergePassthroughs = (...handlers: OptimisticPassThrough[]): OptimisticPassThrough => {
-  return (action) => {
-    const result = handlers
-      .map((handler) => handler(action))
-      .find(result => result);
-    if (result) return result;
-    return null;
-  };
 };

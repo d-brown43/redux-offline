@@ -1,4 +1,4 @@
-import {applyMiddleware, createStore, Middleware, Reducer, Store} from "redux";
+import {applyMiddleware, createStore, Middleware, Store} from "redux";
 import _ from 'lodash';
 import {ApiAction, ApiDependentAction, ApiResourceAction, OfflineAction, OfflineConfig, OfflineState} from "./types";
 import {isDependentAction, actionHasSideEffect, isOfflineAction} from "./utils";
@@ -10,7 +10,6 @@ import {
   offlineActions,
   setIsRebuilding,
   replaceActionInQueue,
-  createRootReducer,
   reducer,
 } from "./redux";
 
@@ -25,7 +24,7 @@ type InternalConfig = {
 
 type OptimisticConfig = Pick<InternalConfig, 'store' | 'config' | 'getState'>;
 
-type OptimisticActionSpy = (internalConfig: OptimisticConfig) => Middleware;
+type OptimisticActionSpy = (config: OptimisticConfig) => Middleware;
 
 const makeGetState = (config: OfflineConfig): GetState => (store: Store) => {
   return config.selector(store.getState());
@@ -85,15 +84,11 @@ const handleOptimisticUpdateResolved = (
 };
 
 const handlePassthroughs = (internalConfig: InternalConfig, action: ApiDependentAction) => {
-  const {optimisticStore, config, store} = internalConfig;
+  const {optimisticStore, store} = internalConfig;
   optimisticStore.dispatch(markActionAsProcessed(action, null));
-  const nextAction = config.optimisticPassThrough(action);
-  if (nextAction) {
-    store.dispatch(nextAction);
-    rebuildOptimisticStore(internalConfig);
-  } else {
-    console.warn('No passthrough action found for optimistic dependent action', action);
-  }
+  const {offline, ...nextAction} = action;
+  store.dispatch(nextAction);
+  rebuildOptimisticStore(internalConfig);
 };
 
 const syncNextPendingAction = (internalConfig: InternalConfig): Promise<any> => {
@@ -118,8 +113,8 @@ const syncNextPendingAction = (internalConfig: InternalConfig): Promise<any> => 
     });
 };
 
-const optimisticActionSpy: OptimisticActionSpy = (internalConfig) => optimisticStore => next => action => {
-  const {store, getState} = internalConfig;
+export const optimisticActionSpy: OptimisticActionSpy = (config) => optimisticStore => next => action => {
+  const {store, getState} = config;
 
   const isNonOfflineAction = (
     !isOfflineAction(action)
@@ -127,23 +122,32 @@ const optimisticActionSpy: OptimisticActionSpy = (internalConfig) => optimisticS
     && !getState(optimisticStore as Store).isRebuilding
   );
 
+  const mergedConfig = {...config, optimisticStore: optimisticStore as Store};
+
   if (isNonOfflineAction) {
     store.dispatch(action);
-    rebuildOptimisticStore({...internalConfig, optimisticStore: optimisticStore as Store});
+    rebuildOptimisticStore(mergedConfig);
   } else {
     next(action);
   }
 };
 
-const run = (store: Store, rootOptimisticReducer: Reducer, config: OfflineConfig) => {
-  const getState = makeGetState(config);
+const realStoreMiddleware: Middleware = () => next => action => {
+  if (isOfflineAction(action)) {
+    // Lets us use the same rootReducer for the real store and optimistic store
+    const {offline, ...rest} = action;
+    next(rest);
+  } else {
+    next(action);
+  }
+};
 
-  const optimisticMiddleware = applyMiddleware(optimisticActionSpy({store, config, getState}));
-  const optimisticStore = createStore(createRootReducer(rootOptimisticReducer), optimisticMiddleware);
-
+const makeRun = (configuredConfig: OptimisticConfig) => (optimisticStore: Store) => {
   const setSyncing = (isSyncing: boolean) => {
     optimisticStore.dispatch(setIsSyncing(isSyncing));
   };
+
+  const {getState, store, config} = configuredConfig;
 
   const internalConfig = {
     store,
@@ -167,7 +171,27 @@ const run = (store: Store, rootOptimisticReducer: Reducer, config: OfflineConfig
     }
   });
 
-  return optimisticStore;
+  return store;
 };
 
-export default run;
+const configure = (config: OfflineConfig): { run: (store: Store) => void, optimisticMiddleware: Middleware } => {
+  const getState = makeGetState(config);
+  const store = createStore(config.rootReducer, applyMiddleware(realStoreMiddleware));
+
+  const internalConfig = {
+    getState,
+    config,
+    store,
+  };
+
+  const optimisticMiddleware = optimisticActionSpy(internalConfig);
+
+  const run = makeRun(internalConfig);
+
+  return {
+    optimisticMiddleware,
+    run,
+  }
+};
+
+export default configure;

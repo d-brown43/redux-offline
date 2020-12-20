@@ -1,9 +1,7 @@
 import {AppAction, AppActionCreator, AppReducer} from "./types";
 import {
-  ApiAction,
   GetFulfilledAction,
   OfflineAction,
-  OptimisticPassThrough
 } from "../offlineModule";
 import {getTempId} from "../utils";
 import {API_CREATE_TEST_OBJECT} from "./api";
@@ -45,7 +43,7 @@ type SetCurrentObjectArgs = string | null;
 type SetCurrentObjectAction = AppAction<SetCurrentObjectArgs>;
 type CreateSetCurrentObject = AppActionCreator<SetCurrentObjectArgs, SetCurrentObjectAction>;
 
-export const optimisticReducer: AppReducer<TestState> = (state = initialState, action) => {
+const reducer: AppReducer<TestState> = (state = initialState, action) => {
   switch (action.type) {
     case CREATE_TEST_OBJECT:
       return {
@@ -57,13 +55,6 @@ export const optimisticReducer: AppReducer<TestState> = (state = initialState, a
         ...state,
         currentObjectId: action.payload,
       };
-    default:
-      return state;
-  }
-};
-
-const reducer: AppReducer<TestState> = (state = initialState, action) => {
-  switch (action.type) {
     case CREATE_TEST_OBJECT_RESOLVED:
       return {
         ...state,
@@ -130,29 +121,10 @@ export const setCurrentObject: CreateSetCurrentObject = (objectId) => ({
   }
 });
 
-const setCurrentObjectResolved = (objectId: string) => ({
-  type: SET_CURRENT_OBJECT_RESOLVED,
-  payload: objectId,
-  offline: {
-    dependencyPath: 'payload',
-  }
-});
-
 export const getFulfilledActions: GetFulfilledAction = (optimisticAction, apiResponse) => {
   switch (optimisticAction.type) {
     case CREATE_TEST_OBJECT:
       return createTestObjectResolved(apiResponse);
-    case SET_CURRENT_OBJECT:
-      return setCurrentObjectResolved(apiResponse.id);
-    default:
-      return null;
-  }
-};
-
-export const optimisticPassThrough: OptimisticPassThrough = (optimisticAction) => {
-  switch (optimisticAction.type) {
-    case SET_CURRENT_OBJECT:
-      return setCurrentObjectResolved(optimisticAction.payload);
     default:
       return null;
   }

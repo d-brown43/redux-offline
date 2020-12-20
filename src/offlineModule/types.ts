@@ -1,4 +1,4 @@
-import {AnyAction} from "redux";
+import {AnyAction, Reducer} from "redux";
 
 export interface ApiResourceMetadata {
   dependencyPath: string
@@ -37,11 +37,10 @@ export type OfflineState = {
 }
 
 export type GetFulfilledAction = (optimisticAction: ApiAction, apiResponse: any) => ApiResourceAction | null;
-export type OptimisticPassThrough = (optimisticAction: ApiDependentAction) => AnyAction | null;
 
 export type OfflineConfig = {
   selector: (state: any) => OfflineState
   getFulfilledAction: GetFulfilledAction;
-  optimisticPassThrough: OptimisticPassThrough,
   makeApiRequest: (apiData: any) => Promise<any>;
+  rootReducer: Reducer,
 }
