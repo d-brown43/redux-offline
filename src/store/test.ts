@@ -1,5 +1,5 @@
 import {AppAction, AppActionCreator, AppReducer} from "./types";
-import {GetFulfilledAction, OfflineAction, OptimisticPassthrough} from "../offlineModule";
+import {GetFulfilledAction, OfflineAction, OptimisticPassThrough} from "../offlineModule";
 import {getTempId} from "../utils";
 import {API_CREATE_TEST_OBJECT} from "./api";
 
@@ -104,7 +104,7 @@ export const getFulfilledActions: GetFulfilledAction = (optimisticAction, apiRes
   }
 };
 
-export const optimisticPassthrough: OptimisticPassthrough = (dispatch, optimisticAction) => {
+export const optimisticPassThrough: OptimisticPassThrough = (dispatch, optimisticAction) => {
   switch (optimisticAction.type) {
     case SET_CURRENT_OBJECT:
       dispatch({

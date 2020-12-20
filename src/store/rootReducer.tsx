@@ -2,7 +2,7 @@ import testReducer, {
   TestState,
   getFulfilledActions,
   optimisticReducer as testOptimisticReducer,
-  optimisticPassthrough
+  optimisticPassThrough as testOptimisticPassThrough
 } from './test';
 import {combineReducers} from "redux";
 import {mergeGetFulfilledActions, mergePassthroughs, offlineReducer, OfflineState} from "../offlineModule";
@@ -12,7 +12,7 @@ export const mergedGetFulfilledAction = mergeGetFulfilledActions(
 );
 
 export const mergedPassthroughs = mergePassthroughs(
-  optimisticPassthrough,
+  testOptimisticPassThrough,
 );
 
 export type State = {

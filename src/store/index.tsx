@@ -16,7 +16,7 @@ const configureStore = () => {
   const optimisticStore = run(store, rootOptimisticReducer, {
     selector: getOffline,
     getFulfilledAction: mergedGetFulfilledAction,
-    optimisticPassthrough: mergedPassthroughs,
+    optimisticPassThrough: mergedPassthroughs,
     makeApiRequest: api,
   });
   return {

@@ -12,7 +12,7 @@ export interface DependsOn {
   dependsOn: string
 }
 
-export type OfflineMetadata = DependsOn | ApiEntity | ApiResourceMetadata;
+export type OfflineMetadata = DependsOn | ApiResourceMetadata;
 
 export interface OfflineAction extends AnyAction {
   offline: OfflineMetadata
@@ -37,12 +37,12 @@ export type OfflineState = {
 }
 
 export type GetFulfilledAction = (optimisticAction: ApiAction, apiResponse: any) => ApiResourceAction | null;
-export type OptimisticPassthrough = (dispatch: Dispatch, optimisticAction: AnyAction) => void;
+export type OptimisticPassThrough = (dispatch: Dispatch, optimisticAction: AnyAction) => void;
 
 export type OfflineConfig = {
   selector: (state: any) => OfflineState
   getFulfilledAction: GetFulfilledAction;
-  optimisticPassthrough: OptimisticPassthrough,
+  optimisticPassThrough: OptimisticPassThrough,
   makeApiRequest: (apiData: any) => Promise<any>;
 }
 
