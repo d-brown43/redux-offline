@@ -18,11 +18,11 @@ const fakeApi = (apiData: ApiData) => {
 };
 
 const api = (apiData: ApiData) => {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     console.log('making fake request with data', apiData);
     window.setTimeout(() => {
       const fakeResponse = fakeApi(apiData);
-      console.log('resolving response for request data', apiData, fakeResponse);
+      console.log('resolve response for request data', apiData, fakeResponse);
       resolve(fakeResponse);
     }, 5000);
   });

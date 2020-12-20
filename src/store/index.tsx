@@ -2,7 +2,8 @@ import {AnyAction, applyMiddleware, createStore, Store} from "redux";
 import rootReducer, {
   getOffline,
   State,
-  mergedGetFulfilledAction
+  mergedGetFulfilledAction,
+  mergedGetRollbackAction
 } from './rootReducer';
 import configure, {createRootReducer} from "../offlineModule";
 import api from "./api";
@@ -13,6 +14,7 @@ const configureStore = () => {
   const {run, optimisticMiddleware, store} = configure({
     selector: getOffline,
     getFulfilledAction: mergedGetFulfilledAction,
+    getRollbackAction: mergedGetRollbackAction,
     makeApiRequest: api,
     rootReducer,
   });

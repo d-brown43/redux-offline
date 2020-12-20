@@ -9,7 +9,7 @@ import {
   OfflineConfig,
   OfflineState
 } from "./types";
-import {isDependentAction, actionHasSideEffect, isOfflineAction} from "./utils";
+import {isDependentAction, actionHasSideEffect, isOfflineAction, isResolvedAction} from "./utils";
 import {
   markActionAsProcessed,
   replaceRootState,
@@ -18,7 +18,7 @@ import {
   offlineActions,
   setIsRebuilding,
   replaceActionInQueue,
-  reducer,
+  reducer, removeActionsInQueue,
 } from "./redux";
 
 type GetState = (store: Store) => OfflineState;
@@ -76,24 +76,67 @@ const updateDependentActions = (
   });
 };
 
+const removeDependentActions = (
+  internalConfig: InternalConfig,
+  optimisticAction: ApiAction,
+) => {
+  const {getState, optimisticStore} = internalConfig;
+  const queue: OfflineAction[] = getState(optimisticStore).queue;
+
+  const actionsToRemove = queue.reduce<OfflineAction[]>((acc, action) => {
+    if (isDependentAction(action) && actionDependsOn(optimisticAction, action)) {
+      return acc.concat([action]);
+    }
+    return acc;
+  }, []);
+
+  optimisticStore.dispatch(removeActionsInQueue(actionsToRemove));
+
+  actionsToRemove.forEach(action => {
+    if (actionHasSideEffect(action)) {
+      removeDependentActions(internalConfig, action);
+    }
+  });
+};
+
 const handleOptimisticUpdateResolved = (
   internalConfig: InternalConfig,
   action: ApiAction,
   response: any,
 ) => {
   const {optimisticStore, config, store} = internalConfig;
-  optimisticStore.dispatch(markActionAsProcessed(action, response));
+  optimisticStore.dispatch(markActionAsProcessed(action));
   const fulfilledAction = config.getFulfilledAction(action, response);
   if (fulfilledAction) {
+    if (!isResolvedAction(fulfilledAction)) {
+      console.error('Expecting a resolved action or null to be returned by getFulfilledAction, got', fulfilledAction);
+      console.info('A resolved action is an action with a `dependencyPath` attribute for the offline metadata and no other properties');
+      throw new Error(fulfilledAction);
+    }
     store.dispatch(fulfilledAction);
     updateDependentActions(internalConfig, action, fulfilledAction);
     rebuildOptimisticStore(internalConfig);
   }
 };
 
+const handleOptimisticUpdateRollback = (
+  internalConfig: InternalConfig,
+  action: ApiAction,
+  response: any,
+) => {
+  const {optimisticStore, config, store} = internalConfig;
+  optimisticStore.dispatch(markActionAsProcessed(action));
+  const rollbackAction = config.getRollbackAction(action, response);
+  if (rollbackAction) {
+    store.dispatch(rollbackAction);
+  }
+  removeDependentActions(internalConfig, action);
+  rebuildOptimisticStore(internalConfig);
+};
+
 const handlePassthroughs = (internalConfig: InternalConfig, action: ApiDependentAction) => {
   const {optimisticStore, store} = internalConfig;
-  optimisticStore.dispatch(markActionAsProcessed(action, null));
+  optimisticStore.dispatch(markActionAsProcessed(action));
   const {offline, ...nextAction} = action;
   store.dispatch(nextAction);
   rebuildOptimisticStore(internalConfig);
@@ -116,7 +159,13 @@ const syncNextPendingAction = (internalConfig: InternalConfig): Promise<any> => 
 
   return config.makeApiRequest(action.offline.apiData)
     .then((response) => {
+      console.log('got response', response);
       handleOptimisticUpdateResolved(internalConfig, action, response);
+      return syncNextPendingAction(internalConfig);
+    })
+    .catch((error) => {
+      console.log('caught error', error);
+      handleOptimisticUpdateRollback(internalConfig, action, error);
       return syncNextPendingAction(internalConfig);
     });
 };

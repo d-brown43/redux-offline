@@ -1,4 +1,4 @@
-import {GetFulfilledAction} from "./types";
+import {GetFulfilledAction, GetRollbackAction} from "./types";
 
 export const mergeGetFulfilledActions = (...handlers: GetFulfilledAction[]) => {
   const merged: GetFulfilledAction = (optimisticAction, apiResponse) => {
@@ -11,6 +11,20 @@ export const mergeGetFulfilledActions = (...handlers: GetFulfilledAction[]) => {
       return null;
     }
     return result;
+  };
+
+  return merged;
+};
+
+export const mergeGetRollbackActions = (...handlers: GetRollbackAction[]) => {
+  const merged: GetRollbackAction = (optimisticAction, apiResponse) => {
+    const handler = handlers
+      .find(handler => handler(optimisticAction, apiResponse));
+
+    if (handler) {
+      return handler(optimisticAction, apiResponse);
+    }
+    return null;
   };
 
   return merged;

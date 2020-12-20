@@ -14,6 +14,7 @@ const REPLACE_OFFLINE_STATE = 'REPLACE_OFFLINE_STATE';
 const OFFLINE_QUEUE_REPLACE_ROOT_STATE = 'OFFLINE_QUEUE_REPLACE_ROOT_STATE';
 const SET_IS_REBUILDING = 'SET_IS_REBUILDING';
 const REPLACE_ACTION_IN_QUEUE = 'REPLACE_ACTION_IN_QUEUE';
+const REMOVE_ACTIONS_IN_QUEUE = 'REMOVE_ACTIONS_IN_QUEUE';
 
 export const offlineActions = {
   SET_IS_SYNCING: true,
@@ -22,6 +23,7 @@ export const offlineActions = {
   OFFLINE_QUEUE_REPLACE_ROOT_STATE: true,
   SET_IS_REBUILDING: true,
   REPLACE_ACTION_IN_QUEUE: true,
+  REMOVE_ACTIONS_IN_QUEUE: true,
 };
 
 export const createRootReducer = (rootReducer: Reducer) => (state: any, action: AnyAction) => {
@@ -36,7 +38,7 @@ export const reducer = (state = initialState, action: AnyAction) => {
   if (action.type === MARK_ACTION_AS_PROCESSED) {
     return {
       ...state,
-      queue: state.queue.filter(a => a !== action.payload.action),
+      queue: state.queue.filter(a => a !== action.payload),
     };
   }
   if (isOfflineAction(action)) {
@@ -61,13 +63,20 @@ export const reducer = (state = initialState, action: AnyAction) => {
         ...state,
         isRebuilding: action.payload,
       };
-    case REPLACE_ACTION_IN_QUEUE:
+    case REPLACE_ACTION_IN_QUEUE: {
       const queue = [...state.queue];
       queue[action.payload.index] = action.payload.action;
       return {
         ...state,
         queue,
       };
+    }
+    case REMOVE_ACTIONS_IN_QUEUE: {
+      return {
+        ...state,
+        queue: state.queue.filter(a => !action.payload.includes(a)),
+      };
+    }
     default:
       return state;
   }
@@ -80,14 +89,11 @@ export const setIsSyncing = (isSyncing: boolean) => ({
   payload: isSyncing,
 });
 
-export const markActionAsProcessed = (action: OfflineAction, response: any) => {
+export const markActionAsProcessed = (action: OfflineAction) => {
   console.log('marking action as processed', action);
   return {
     type: MARK_ACTION_AS_PROCESSED,
-    payload: {
-      action,
-      response,
-    },
+    payload: action,
   };
 };
 
@@ -112,4 +118,9 @@ export const replaceActionInQueue = (index: number, action: OfflineAction) => ({
     index,
     action,
   }
+});
+
+export const removeActionsInQueue = (actions: OfflineAction[]) => ({
+  type: REMOVE_ACTIONS_IN_QUEUE,
+  payload: actions,
 });

@@ -1,6 +1,6 @@
 import {AppAction, AppActionCreator, AppReducer} from "./types";
 import {
-  GetFulfilledAction,
+  GetFulfilledAction, GetRollbackAction,
   OfflineAction,
 } from "../offlineModule";
 import {getTempId} from "../utils";
@@ -122,4 +122,8 @@ export const getFulfilledActions: GetFulfilledAction = (optimisticAction, apiRes
     default:
       return null;
   }
+};
+
+export const getRollbackActions: GetRollbackAction = () => {
+  return null;
 };
