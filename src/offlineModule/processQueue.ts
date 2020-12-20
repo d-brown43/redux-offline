@@ -1,6 +1,14 @@
 import {applyMiddleware, createStore, Middleware, Store} from "redux";
 import _ from 'lodash';
-import {ApiAction, ApiDependentAction, ApiResourceAction, OfflineAction, OfflineConfig, OfflineState} from "./types";
+import {
+  ApiAction,
+  ApiDependentAction,
+  ApiResourceAction,
+  Configure,
+  OfflineAction,
+  OfflineConfig,
+  OfflineState
+} from "./types";
 import {isDependentAction, actionHasSideEffect, isOfflineAction} from "./utils";
 import {
   markActionAsProcessed,
@@ -170,11 +178,9 @@ const makeRun = (configuredConfig: OptimisticConfig) => (optimisticStore: Store)
       setSyncing(false);
     }
   });
-
-  return store;
 };
 
-const configure = (config: OfflineConfig): { run: (store: Store) => void, optimisticMiddleware: Middleware } => {
+const configure: Configure = (config) => {
   const getState = makeGetState(config);
   const store = createStore(config.rootReducer, applyMiddleware(realStoreMiddleware));
 
@@ -191,6 +197,7 @@ const configure = (config: OfflineConfig): { run: (store: Store) => void, optimi
   return {
     optimisticMiddleware,
     run,
+    store,
   }
 };
 

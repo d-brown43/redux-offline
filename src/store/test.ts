@@ -29,7 +29,6 @@ const CREATE_TEST_OBJECT = 'CREATE_TEST_OBJECT';
 const CREATE_TEST_OBJECT_RESOLVED = 'CREATE_TEST_OBJECT_RESOLVED';
 const NON_OPTIMISTIC_TOGGLE = 'NON_OPTIMISTIC_TOGGLE';
 const SET_CURRENT_OBJECT = 'SET_CURRENT_OBJECT';
-const SET_CURRENT_OBJECT_RESOLVED = 'SET_CURRENT_OBJECT_RESOLVED';
 
 type CreateTestObjectArgs = { title: string };
 type TestObjectAction = AppAction<MyTestObject> & OfflineAction;
@@ -64,11 +63,6 @@ const reducer: AppReducer<TestState> = (state = initialState, action) => {
       return {
         ...state,
         toggleIsOn: action.payload,
-      };
-    case SET_CURRENT_OBJECT_RESOLVED:
-      return {
-        ...state,
-        currentObjectId: action.payload,
       };
     default:
       return state;

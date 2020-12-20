@@ -10,7 +10,7 @@ import api from "./api";
 export type StoreType = Store<State, AnyAction>;
 
 const configureStore = () => {
-  const {run, optimisticMiddleware} = configure({
+  const {run, optimisticMiddleware, store} = configure({
     selector: getOffline,
     getFulfilledAction: mergedGetFulfilledAction,
     makeApiRequest: api,
@@ -22,7 +22,7 @@ const configureStore = () => {
     applyMiddleware(optimisticMiddleware)
   );
 
-  const store = run(optimisticStore);
+  run(optimisticStore);
 
   return {
     store,

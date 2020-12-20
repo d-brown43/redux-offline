@@ -1,4 +1,4 @@
-import {AnyAction, Reducer} from "redux";
+import {AnyAction, Middleware, Reducer, Store} from "redux";
 
 export interface ApiResourceMetadata {
   dependencyPath: string
@@ -44,3 +44,11 @@ export type OfflineConfig = {
   makeApiRequest: (apiData: any) => Promise<any>;
   rootReducer: Reducer,
 }
+
+type Configured = {
+  run: (store: Store) => void,
+  optimisticMiddleware: Middleware,
+  store: Store
+};
+
+export type Configure = (config: OfflineConfig) => Configured;
