@@ -1,6 +1,6 @@
 import {applyMiddleware, createStore, Middleware, Reducer, Store} from "redux";
 import _ from 'lodash';
-import {ApiAction, ApiDependentAction, ApiResourceAction, OfflineAction, OfflineConfig} from "./types";
+import {ApiAction, ApiDependentAction, ApiResourceAction, OfflineAction, OfflineConfig, OfflineState} from "./types";
 import {isDependentAction, actionHasSideEffect, isOfflineAction} from "./utils";
 import {
   markActionAsProcessed,
@@ -14,7 +14,7 @@ import {
   reducer,
 } from "./redux";
 
-type GetState = (store: Store) => any;
+type GetState = (store: Store) => OfflineState;
 
 type InternalConfig = {
   store: Store,
@@ -27,13 +27,13 @@ type OptimisticConfig = Pick<InternalConfig, 'store' | 'config' | 'getState'>;
 
 type OptimisticActionSpy = (internalConfig: OptimisticConfig) => Middleware;
 
-const makeGetState = (config: OfflineConfig) => (store: Store) => {
+const makeGetState = (config: OfflineConfig): GetState => (store: Store) => {
   return config.selector(store.getState());
 };
 
 const rebuildOptimisticStore = (internalConfig: InternalConfig) => {
-  const {config, optimisticStore, store} = internalConfig;
-  const offlineState = config.selector(optimisticStore.getState());
+  const {optimisticStore, store, getState} = internalConfig;
+  const offlineState = getState(optimisticStore);
   optimisticStore.dispatch(replaceRootState(store.getState()));
   const offlineStateLoading = reducer(offlineState, setIsRebuilding(true));
   optimisticStore.dispatch(replaceOfflineState(offlineStateLoading));
