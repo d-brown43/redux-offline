@@ -10,7 +10,7 @@ import {
   OfflineConfig,
   OfflineState
 } from "./types";
-import {isDependentAction, actionHasSideEffect, isOfflineAction, isResolvedAction, isPassThrough} from "./utils";
+import {isDependentAction, actionHasSideEffect, isOfflineAction, isResolvedAction} from "./utils";
 import {
   markActionAsProcessed,
   replaceRootState,
@@ -61,21 +61,72 @@ const getOptimisticStoreRebuildActions = (internalConfig: InternalConfig) => {
   ]);
 };
 
+// TODO need good way to compare resources, can't just compare values as they
+// might be same value but used in different contexts
+// e.g. id:1 === otherId:1 using value comparison, this should be false though
+const compareResource = (resourceA: any, resourceB: any) => resourceA === resourceB;
+
 const rebuildOptimisticStore = (internalConfig: InternalConfig) => {
   const {optimisticStore} = internalConfig;
   const actions = getOptimisticStoreRebuildActions(internalConfig);
   optimisticStore.dispatch(actions);
 };
 
-const getResourceId = (action: ApiAction | ApiResourceAction) => _.get(action, action.offline.dependencyPath);
-const getDependency = (action: ApiDependentAction) => _.get(action, action.offline.dependsOn);
+const getSingularResource = (action: ApiAction | ApiResourceAction, path: string) => _.get(action, path);
 
-const updateDependency = (action: ApiDependentAction, fulfilledAction: ApiResourceAction) => {
-  return _.setWith(_.clone(action), action.offline.dependsOn, getResourceId(fulfilledAction), _.clone);
+const getRemoteResourcePaths = (action: ApiAction | ApiResourceAction) => {
+  if (typeof action.offline.dependencyPaths === 'string') {
+    return [action.offline.dependencyPaths];
+  }
+  return action.offline.dependencyPaths;
+};
+
+const getRemoteResources = (action: ApiAction | ApiResourceAction) => {
+  return getRemoteResourcePaths(action).map(path => (
+    getSingularResource(action, path)
+  ));
+};
+
+const getSingularDependency = (action: ApiDependentAction, path: string) => _.get(action, path);
+
+const getDependencyPaths = (action: ApiDependentAction) => {
+  if (typeof action.offline.dependsOn === 'string') {
+    return [action.offline.dependsOn];
+  }
+  return action.offline.dependsOn;
+};
+
+const getDependencies = (action: ApiDependentAction) => {
+  return getDependencyPaths(action).map(dependencyPath => (
+    getSingularDependency(action, dependencyPath)
+  ));
+};
+
+const updateDependencies = (action: ApiDependentAction, optimisticAction: ApiResourceAction, fulfilledAction: ApiResourceAction) => {
+  const dependencyPaths = getDependencyPaths(action);
+  const optimisticResourcePaths = getRemoteResourcePaths(optimisticAction);
+
+  const getUpdatedResource = (currentResourceValue: any) => {
+    const optimisticResourcePath = optimisticResourcePaths.find(
+      p => compareResource(getSingularResource(optimisticAction, p), currentResourceValue)
+    );
+    if (!optimisticResourcePath) {
+      throw new Error('Could not find matching resource');
+    }
+    // TODO need to map old resource paths to new resource paths, they might change
+    // in the fulfilled action
+    return getSingularResource(fulfilledAction, optimisticResourcePath);
+  };
+
+  return dependencyPaths.reduce((acc, path) => {
+    return _.setWith(_.clone(acc), path, getUpdatedResource(getSingularDependency(action, path)), _.clone);
+  }, action);
 };
 
 const actionDependsOn = (action: ApiAction, dependentAction: ApiDependentAction) => {
-  return getResourceId(action) === getDependency(dependentAction);
+  const resources = getRemoteResources(action);
+  const resourceDependencies = getDependencies(dependentAction);
+  return resources.some(resource => resourceDependencies.some(d => resource === d));
 };
 
 const updateDependentActions = (
@@ -87,7 +138,7 @@ const updateDependentActions = (
   const queue: OfflineAction[] = getState(optimisticStore).queue;
   queue.forEach((action, index) => {
     if (isDependentAction(action) && actionDependsOn(optimisticAction, action)) {
-      optimisticStore.dispatch(replaceActionInQueue(index, updateDependency(action, fulfilledAction)));
+      optimisticStore.dispatch(replaceActionInQueue(index, updateDependencies(action, optimisticAction, fulfilledAction)));
     }
   });
 };

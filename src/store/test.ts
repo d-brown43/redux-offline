@@ -83,6 +83,10 @@ const reducer: AppReducer<TestState> = (state = initialState, action) => {
 
 export default reducer;
 
+const testObjectDependencyPaths = [
+  'payload.id',
+];
+
 export const createTestObject: CreateTestObject = ({title, fails}) => {
   const now = new Date().toISOString();
   const payloadData = {
@@ -102,7 +106,7 @@ export const createTestObject: CreateTestObject = ({title, fails}) => {
         data: payloadData,
         fails,
       },
-      dependencyPath: 'payload.id'
+      dependencyPaths: testObjectDependencyPaths,
     }
   };
 };
@@ -111,7 +115,7 @@ const createTestObjectResolved = (testObject: MyTestObject) => ({
   type: CREATE_TEST_OBJECT_RESOLVED,
   payload: testObject,
   offline: {
-    dependencyPath: 'payload.id',
+    dependencyPaths: testObjectDependencyPaths,
   }
 });
 
@@ -124,7 +128,7 @@ export const setCurrentObject: CreateSetCurrentObject = (objectId) => ({
   type: SET_CURRENT_OBJECT,
   payload: objectId,
   offline: {
-    dependsOn: 'payload',
+    dependsOn: ['payload'],
   }
 });
 
@@ -143,7 +147,6 @@ export const getFulfilledActions: GetFulfilledAction = (optimisticAction, apiRes
 };
 
 export const getRollbackActions: GetRollbackAction = (optimisticAction, apiResponse) => {
-  console.log('optimisticAction', optimisticAction);
   switch (optimisticAction.type) {
     case CREATE_TEST_OBJECT:
       return addError(`Failed to create object: "${optimisticAction.payload.title}", found error: ${apiResponse.toString()}`);

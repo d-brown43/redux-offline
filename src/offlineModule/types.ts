@@ -5,7 +5,7 @@ type BaseMetadata = {
 }
 
 export type ApiResourceMetadata = BaseMetadata & {
-  dependencyPath: string
+  dependencyPaths: string | string[]
 }
 
 export type ApiEntity = BaseMetadata & ApiResourceMetadata & {
@@ -13,7 +13,7 @@ export type ApiEntity = BaseMetadata & ApiResourceMetadata & {
 }
 
 export type DependsOn = BaseMetadata & {
-  dependsOn: string
+  dependsOn: string | string[]
 }
 
 export type OfflineMetadata = DependsOn | ApiEntity | ApiResourceMetadata;
