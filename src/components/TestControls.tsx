@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {useDispatch, useSelector} from "react-redux";
 import {createTestObject, nonOptimisticToggle, setCurrentObject} from "../store/test";
 import {State} from "../store/rootReducer";
@@ -11,9 +11,11 @@ const TestControls = () => {
       ? state.test.entities[state.test.entities.length - 1].id
       : null
   );
+  const [testObjectCount, setTestObjectCount] = useState(0);
 
   const testAction = () => {
-    dispatch(createTestObject({title: 'Test Object'}));
+    dispatch(createTestObject({title: `Test Object ${testObjectCount}`}));
+    setTestObjectCount(prevCount => prevCount + 1);
   };
 
   const testToggle = () => {

@@ -9,6 +9,7 @@ const StoreState = ({store}: StoreStateProps) => {
   const [state, setState] = useState();
 
   useEffect(() => {
+    setState(store.getState());
     return store.subscribe(() => {
       setState(store.getState());
     });

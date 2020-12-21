@@ -10,15 +10,15 @@ import {
   OfflineConfig,
   OfflineState
 } from "./types";
-import {isDependentAction, actionHasSideEffect, isOfflineAction, isResolvedAction} from "./utils";
+import {isDependentAction, actionHasSideEffect, isOfflineAction, isResolvedAction, isPassThrough} from "./utils";
 import {
   markActionAsProcessed,
   replaceRootState,
   replaceOfflineState,
   setIsSyncing,
-  offlineActions,
   replaceActionInQueue,
-  removeActionsInQueue, isInternalOfflineAction,
+  removeActionsInQueue,
+  isInternalOfflineAction,
 } from "./redux";
 
 type GetState = (store: Store) => OfflineState;
@@ -47,16 +47,24 @@ const getOptimisticStoreRebuildActions = (internalConfig: InternalConfig) => {
   return createArrayAction([
     replaceRootState(store.getState()),
     replaceOfflineState(offlineState),
-    ...(offlineState.queue.map(optimisticAction => {
-      const {offline, ...action} = optimisticAction;
-      return action;
+    ...offlineState.queue.map(optimisticAction => ({
+      ...optimisticAction,
+      offline: {
+        ...optimisticAction.offline,
+        // Label the action as a passThrough action, i.e. let it pass through
+        // without doing anything special to it, we need to re-apply
+        // the changes it caused to the optimistic state, but don't
+        // want to requeue it, since it will already exist in the queue
+        isPassThrough: true,
+      }
     })),
   ]);
 };
 
 const rebuildOptimisticStore = (internalConfig: InternalConfig) => {
   const {optimisticStore} = internalConfig;
-  optimisticStore.dispatch(getOptimisticStoreRebuildActions(internalConfig));
+  const actions = getOptimisticStoreRebuildActions(internalConfig);
+  optimisticStore.dispatch(actions);
 };
 
 const getResourceId = (action: ApiAction | ApiResourceAction) => _.get(action, action.offline.dependencyPath);
@@ -144,7 +152,7 @@ const handleOptimisticUpdateRollback = (
   rebuildOptimisticStore(internalConfig);
 };
 
-const handlePassthroughs = (internalConfig: InternalConfig, action: ApiDependentAction) => {
+const handlePassThrough = (internalConfig: InternalConfig, action: ApiDependentAction) => {
   const {optimisticStore, store} = internalConfig;
   optimisticStore.dispatch(markActionAsProcessed(action));
   const {offline, ...nextAction} = action;
@@ -173,7 +181,7 @@ const syncNextPendingAction = (internalConfig: InternalConfig): Promise<any> => 
   const action = state.queue[0];
 
   if (isDependentAction(action)) {
-    handlePassthroughs(internalConfig, action);
+    handlePassThrough(internalConfig, action);
     return syncNextPendingAction(internalConfig);
   }
 
@@ -185,15 +193,12 @@ const syncNextPendingAction = (internalConfig: InternalConfig): Promise<any> => 
 };
 
 export const optimisticActionSpy: OptimisticActionSpy = (config) => optimisticStore => next => action => {
-  const {store} = config;
+  const offlineAction = isOfflineAction(action) || isInternalOfflineAction(action);
 
-  const isNonOfflineAction = !isOfflineAction(action) && !isInternalOfflineAction(action);
-
-  const mergedConfig = {...config, optimisticStore: optimisticStore as Store};
-
-  if (isNonOfflineAction) {
+  if (!offlineAction) {
+    const {store} = config;
     store.dispatch(action);
-    next(getOptimisticStoreRebuildActions(mergedConfig));
+    next(getOptimisticStoreRebuildActions({...config, optimisticStore: optimisticStore as Store}));
   } else {
     next(action);
   }

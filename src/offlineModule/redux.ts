@@ -1,6 +1,6 @@
 import {AnyAction, Reducer} from "redux";
-import {ArrayAction, OfflineAction, OfflineState} from "./types";
-import {isOfflineAction} from "./utils";
+import {OfflineAction, OfflineState} from "./types";
+import {isOfflineAction, isPassThrough} from "./utils";
 
 const initialState: OfflineState = {
   queue: [],
@@ -26,21 +26,14 @@ export const offlineActions = {
 export const isInternalOfflineAction = (action: AnyAction) => action.type in offlineActions;
 
 export const createRootReducer = (rootReducer: Reducer) => (state: any, action: AnyAction) => {
-  let nextState = state;
   if (action.type === OFFLINE_QUEUE_REPLACE_ROOT_STATE) {
-    nextState = action.payload;
+    return action.payload;
   }
-  return rootReducer(nextState, action);
+  return rootReducer(state, action);
 };
 
 export const reducer = (state = initialState, action: AnyAction) => {
-  if (action.type === MARK_ACTION_AS_PROCESSED) {
-    return {
-      ...state,
-      queue: state.queue.filter(a => a !== action.payload),
-    };
-  }
-  if (isOfflineAction(action)) {
+  if (isOfflineAction(action) && !isPassThrough(action)) {
     return {
       ...state,
       queue: [
@@ -50,6 +43,11 @@ export const reducer = (state = initialState, action: AnyAction) => {
     }
   }
   switch (action.type) {
+    case MARK_ACTION_AS_PROCESSED:
+      return {
+        ...state,
+        queue: state.queue.filter(a => a !== action.payload),
+      };
     case SET_IS_SYNCING:
       return {
         ...state,
@@ -83,13 +81,10 @@ export const setIsSyncing = (isSyncing: boolean) => ({
   payload: isSyncing,
 });
 
-export const markActionAsProcessed = (action: OfflineAction) => {
-  console.log('marking action as processed', action);
-  return {
-    type: MARK_ACTION_AS_PROCESSED,
-    payload: action,
-  };
-};
+export const markActionAsProcessed = (action: OfflineAction) => ({
+  type: MARK_ACTION_AS_PROCESSED,
+  payload: action,
+});
 
 export const replaceOfflineState = (state: OfflineState) => ({
   type: REPLACE_OFFLINE_STATE,

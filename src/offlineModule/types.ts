@@ -1,18 +1,22 @@
 import {Action, AnyAction, Reducer, Store, StoreEnhancer} from "redux";
 
-export type ApiResourceMetadata = {
+type BaseMetadata = {
+  isPassThrough?: boolean
+}
+
+export type ApiResourceMetadata = BaseMetadata & {
   dependencyPath: string
 }
 
-export type ApiEntity = ApiResourceMetadata & {
+export type ApiEntity = BaseMetadata & ApiResourceMetadata & {
   apiData: any
 }
 
-export type DependsOn = {
+export type DependsOn = BaseMetadata & {
   dependsOn: string
 }
 
-export type OfflineMetadata = DependsOn | ApiResourceMetadata;
+export type OfflineMetadata = DependsOn | ApiEntity | ApiResourceMetadata;
 
 export interface OfflineAction extends AnyAction {
   offline: OfflineMetadata
