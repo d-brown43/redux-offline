@@ -1,7 +1,7 @@
 import {AppAction, AppActionCreator, AppReducer} from "./types";
 import {
   GetFulfilledAction, GetRollbackAction,
-  OfflineAction,
+  OfflineAction, ResolvedDependencies, ResourceIdentifier,
 } from "../offlineModule";
 import {getTempId} from "../utils";
 import {API_CREATE_TEST_OBJECT} from "./api";
@@ -32,6 +32,10 @@ const CREATE_TEST_OBJECT_RESOLVED = 'CREATE_TEST_OBJECT_RESOLVED';
 const NON_OPTIMISTIC_TOGGLE = 'NON_OPTIMISTIC_TOGGLE';
 const SET_CURRENT_OBJECT = 'SET_CURRENT_OBJECT';
 const CREATE_ERROR = 'CREATE_ERROR';
+
+const ApiResourceTypes = {
+  TEST_OBJECT_ID: 'TEST_OBJECT:id',
+};
 
 type CreateTestObjectArgs = { title: string, fails: boolean };
 type TestObjectAction = AppAction<MyTestObject> & OfflineAction;
@@ -64,7 +68,7 @@ const reducer: AppReducer<TestState> = (state = initialState, action) => {
     case CREATE_TEST_OBJECT_RESOLVED:
       return {
         ...state,
-        entities: state.entities.concat([action.payload]),
+        entities: state.entities.concat([action.payload.nested]),
       };
     case NON_OPTIMISTIC_TOGGLE:
       return {
@@ -83,10 +87,6 @@ const reducer: AppReducer<TestState> = (state = initialState, action) => {
 
 export default reducer;
 
-const testObjectDependencyPaths = [
-  'payload.id',
-];
-
 export const createTestObject: CreateTestObject = ({title, fails}) => {
   const now = new Date().toISOString();
   const payloadData = {
@@ -94,6 +94,12 @@ export const createTestObject: CreateTestObject = ({title, fails}) => {
     createdAt: now,
     updatedAt: now,
   };
+  const dependencyPaths: ResourceIdentifier[] = [
+    {
+      path: 'payload.id',
+      type: ApiResourceTypes.TEST_OBJECT_ID,
+    }
+  ];
   return {
     type: CREATE_TEST_OBJECT,
     payload: {
@@ -106,18 +112,40 @@ export const createTestObject: CreateTestObject = ({title, fails}) => {
         data: payloadData,
         fails,
       },
-      dependencyPaths: testObjectDependencyPaths,
+      // States what the API will change
+      dependencyPaths,
     }
   };
 };
 
-const createTestObjectResolved = (testObject: MyTestObject) => ({
-  type: CREATE_TEST_OBJECT_RESOLVED,
-  payload: testObject,
-  offline: {
-    resolvedPaths: 'payload.id',
-  }
-});
+const createTestObjectResolved = (testObject: MyTestObject) => {
+  const resolvedDependencies: ResolvedDependencies = [
+    [
+      {
+        path: 'payload.id',
+        type: ApiResourceTypes.TEST_OBJECT_ID,
+      },
+      {
+        path: 'payload.nested.id',
+        type: ApiResourceTypes.TEST_OBJECT_ID,
+      }
+    ]
+  ];
+  return ({
+    type: CREATE_TEST_OBJECT_RESOLVED,
+    payload: {
+      nested: testObject
+    },
+    offline: {
+      // States the data that has changed from the original action to this one,
+      // and where it changed from in the original action
+      // E.g. if the API modifies the Id of an entity, and we are creating an action
+      // to update this, we need to say where this new id can be found within this action,
+      // and where the id field was in the original action
+      resolvedDependencies,
+    }
+  });
+};
 
 export const nonOptimisticToggle: CreateNonOptimisticToggle = (isOn) => ({
   type: NON_OPTIMISTIC_TOGGLE,
@@ -128,7 +156,10 @@ export const setCurrentObject: CreateSetCurrentObject = (objectId) => ({
   type: SET_CURRENT_OBJECT,
   payload: objectId,
   offline: {
-    dependsOn: ['payload'],
+    dependsOn: {
+      path: 'payload',
+      type: ApiResourceTypes.TEST_OBJECT_ID
+    },
   }
 });
 

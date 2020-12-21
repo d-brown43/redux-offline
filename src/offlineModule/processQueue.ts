@@ -8,9 +8,16 @@ import {
   Configure,
   OfflineAction,
   OfflineConfig,
-  OfflineState, ResolvedApiEntityAction, ResolvedPaths
+  OfflineState, ResolvedApiEntityAction, ResolvedDependencies, Resource, ResourceIdentifier
 } from "./types";
-import {isDependentAction, actionHasSideEffect, isOfflineAction, isResolvedAction} from "./utils";
+import {
+  isDependentAction,
+  actionHasSideEffect,
+  isOfflineAction,
+  isResolvedAction,
+  isResourcesEqual,
+  isResourceIdentifiersEqual, getRemoteResourceIdentifiers, getDependencyResourceIdentifiers
+} from "./utils";
 import {
   markActionAsProcessed,
   replaceRootState,
@@ -20,6 +27,7 @@ import {
   removeActionsInQueue,
   isInternalOfflineAction,
 } from "./redux";
+import {validateResourceIdentifiersOnAction} from "./schemaValidation";
 
 type GetState = (store: Store) => OfflineState;
 
@@ -61,11 +69,6 @@ const getOptimisticStoreRebuildActions = (internalConfig: InternalConfig) => {
   ]);
 };
 
-// TODO need good way to compare resources, can't just compare values as they
-// might be same value but used in different contexts
-// e.g. id:1 === otherId:1 using value comparison, this should be false though
-const compareResource = (resourceA: any, resourceB: any) => resourceA === resourceB;
-
 const rebuildOptimisticStore = (internalConfig: InternalConfig) => {
   const {optimisticStore} = internalConfig;
   const actions = getOptimisticStoreRebuildActions(internalConfig);
@@ -74,79 +77,68 @@ const rebuildOptimisticStore = (internalConfig: InternalConfig) => {
 
 const getSingularResource = (action: object, path: string) => _.get(action, path);
 
-const getRemoteResourcePaths = (action: ApiAction | ApiResourceAction) => {
-  if (typeof action.offline.dependencyPaths === 'string') {
-    return [action.offline.dependencyPaths];
-  }
-  return action.offline.dependencyPaths;
-};
-
-const getRemoteResources = (action: ApiAction | ApiResourceAction) => {
-  return getRemoteResourcePaths(action).map(path => (
-    getSingularResource(action, path)
-  ));
+const getRemoteResources = (action: ApiAction | ApiResourceAction): Resource[] => {
+  return getRemoteResourceIdentifiers(action).map(({path, type}) => ({
+    type,
+    value: getSingularResource(action, path),
+  }));
 };
 
 const getSingularDependency = (action: ApiDependentAction, path: string) => _.get(action, path);
 
-const getDependencyPaths = (action: ApiDependentAction) => {
-  if (typeof action.offline.dependsOn === 'string') {
-    return [action.offline.dependsOn];
-  }
-  return action.offline.dependsOn;
+const getDependencies = (action: ApiDependentAction): Resource[] => {
+  return getDependencyResourceIdentifiers(action).map(({type, path}) => ({
+    type,
+    value: getSingularDependency(action, path)
+  }));
 };
 
-const getDependencies = (action: ApiDependentAction) => {
-  return getDependencyPaths(action).map(dependencyPath => (
-    getSingularDependency(action, dependencyPath)
-  ));
-};
-
-const getResolvedResourcePath = (optimisticPath: string, resolvedPaths: ResolvedPaths) => {
+const getResolvedResourceIdentifier = (optimisticIdentifier: ResourceIdentifier, resolvedIdentifiers: ResolvedDependencies) => {
   const getErrorMessage = () => {
     return `Unable to find matching resource path`;
   };
 
-  if (typeof resolvedPaths === 'string') {
-    if (optimisticPath !== resolvedPaths) {
+  if (typeof resolvedIdentifiers === 'object' && !Array.isArray(resolvedIdentifiers)) {
+    if (!isResourceIdentifiersEqual(optimisticIdentifier, resolvedIdentifiers)) {
       throw new Error(getErrorMessage());
     }
-    return resolvedPaths;
+    return resolvedIdentifiers;
   }
-  const result = resolvedPaths.find(pathOrPair => {
-    const comparisonPath = typeof pathOrPair === 'string' ? pathOrPair : pathOrPair[0];
-    return comparisonPath === optimisticPath;
+  const result = resolvedIdentifiers.find((identifierOrPair) => {
+    const comparisonIdentifier = !Array.isArray(identifierOrPair) ? identifierOrPair : identifierOrPair[0];
+    return isResourceIdentifiersEqual(comparisonIdentifier, optimisticIdentifier);
   });
   if (!result) {
     throw new Error(getErrorMessage());
   }
-  return typeof result === 'string' ? result : result[0];
+  return !Array.isArray(result) ? result : result[1];
 };
 
 const updateDependencies = (action: ApiDependentAction, optimisticAction: ApiResourceAction, fulfilledAction: ResolvedApiEntityAction) => {
-  const dependencyPaths = getDependencyPaths(action);
-  const optimisticResourcePaths = getRemoteResourcePaths(optimisticAction);
+  const dependencyResourceIdentifiers = getDependencyResourceIdentifiers(action);
+  const optimisticResourceIdentifiers = getRemoteResourceIdentifiers(optimisticAction);
 
-  const getUpdatedResource = (currentResourceValue: any) => {
-    const optimisticResourcePath = optimisticResourcePaths.find(
-      p => compareResource(getSingularResource(optimisticAction, p), currentResourceValue)
-    );
-    if (!optimisticResourcePath) {
+  const getUpdatedResource = (currentResourceIdentifier: ResourceIdentifier) => {
+    const optimisticResourceIdentifier = optimisticResourceIdentifiers
+      .find(
+        p => isResourceIdentifiersEqual(p, currentResourceIdentifier),
+      );
+    if (!optimisticResourceIdentifier) {
       throw new Error('Could not find matching resource');
     }
-    const resolvedPath = getResolvedResourcePath(optimisticResourcePath, fulfilledAction.offline.resolvedPaths);
-    return getSingularResource(fulfilledAction, resolvedPath);
+    const resolvedIdentifier = getResolvedResourceIdentifier(optimisticResourceIdentifier, fulfilledAction.offline.resolvedDependencies);
+    return getSingularResource(fulfilledAction, resolvedIdentifier.path);
   };
 
-  return dependencyPaths.reduce((acc, path) => {
-    return _.setWith(_.clone(acc), path, getUpdatedResource(getSingularDependency(action, path)), _.clone);
+  return dependencyResourceIdentifiers.reduce((acc, identifier) => {
+    return _.setWith(_.clone(acc), identifier.path, getUpdatedResource(identifier), _.clone);
   }, action);
 };
 
 const actionDependsOn = (action: ApiAction, dependentAction: ApiDependentAction) => {
   const resources = getRemoteResources(action);
   const resourceDependencies = getDependencies(dependentAction);
-  return resources.some(resource => resourceDependencies.some(d => resource === d));
+  return resources.some(r => resourceDependencies.some(d => isResourcesEqual(d, r)));
 };
 
 const updateDependentActions = (
@@ -250,6 +242,8 @@ const syncNextPendingAction = (internalConfig: InternalConfig): Promise<any> => 
   const state = getState(optimisticStore);
   if (state.queue.length === 0) return Promise.resolve();
   const action = state.queue[0];
+
+  validateResourceIdentifiersOnAction(action);
 
   if (isDependentAction(action)) {
     handlePassThrough(internalConfig, action);

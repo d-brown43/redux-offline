@@ -4,8 +4,18 @@ type BaseMetadata = {
   isPassThrough?: boolean
 }
 
+export type ResourceIdentifier<T extends string = any> = {
+  path: string
+  type: T
+}
+
+export type Resource<T = any, V = any> = {
+  type: T,
+  value: V
+}
+
 export type ApiResourceMetadata = BaseMetadata & {
-  dependencyPaths: string | string[]
+  dependencyPaths: ResourceIdentifier | ResourceIdentifier[]
 }
 
 export type ApiEntityMetadata = BaseMetadata & ApiResourceMetadata & {
@@ -13,13 +23,15 @@ export type ApiEntityMetadata = BaseMetadata & ApiResourceMetadata & {
 }
 
 export type DependsOnMetadata = BaseMetadata & {
-  dependsOn: string | string[]
+  dependsOn: ResourceIdentifier | ResourceIdentifier[]
 }
 
-export type ResolvedPaths = (string | [string, string])[] | string;
+export type ResolvedDependencies =
+  (ResourceIdentifier | [ResourceIdentifier, ResourceIdentifier])[]
+  | ResourceIdentifier;
 
 export type ResolvedEntityMetadata = BaseMetadata & {
-  resolvedPaths: ResolvedPaths
+  resolvedDependencies: ResolvedDependencies
 }
 
 export type OfflineMetadata = DependsOnMetadata | ApiEntityMetadata | ApiResourceMetadata | ResolvedEntityMetadata;
