@@ -1,14 +1,14 @@
-import {AnyAction, Middleware, Reducer, Store} from "redux";
+import {Action, AnyAction, Reducer, Store, StoreEnhancer} from "redux";
 
-export interface ApiResourceMetadata {
+export type ApiResourceMetadata = {
   dependencyPath: string
 }
 
-export interface ApiEntity extends ApiResourceMetadata {
+export type ApiEntity = ApiResourceMetadata & {
   apiData: any
 }
 
-export interface DependsOn {
+export type DependsOn = {
   dependsOn: string
 }
 
@@ -33,7 +33,6 @@ export interface ApiDependentAction extends OfflineAction {
 export type OfflineState = {
   queue: OfflineAction[]
   isSyncing: boolean
-  isRebuilding: boolean
 }
 
 export type GetFulfilledAction = (optimisticAction: ApiAction, apiResponse: any) => ApiResourceAction | null;
@@ -49,8 +48,16 @@ export type OfflineConfig = {
 
 type Configured = {
   run: (store: Store) => void,
-  optimisticMiddleware: Middleware,
+  storeEnhancer: StoreEnhancer,
   store: Store
 };
 
 export type Configure = (config: OfflineConfig) => Configured;
+
+// This is a bit of a type hack to satisfy the redux store type constraint
+// It expects singular actions, and can't be overridden to accept arrays of actions
+// (we're using a redux batch middleware)
+// So instead make an interface that has an undefined "type" field assigned to
+// the array of actions, and use a utility to create the array with type field
+export interface ArrayAction extends Array<AnyAction>, Action<undefined> {
+}

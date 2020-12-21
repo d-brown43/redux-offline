@@ -1,30 +1,29 @@
 import {AnyAction, Reducer} from "redux";
-import {OfflineAction, OfflineState} from "./types";
+import {ArrayAction, OfflineAction, OfflineState} from "./types";
 import {isOfflineAction} from "./utils";
 
 const initialState: OfflineState = {
   queue: [],
   isSyncing: false,
-  isRebuilding: false,
 };
 
 const SET_IS_SYNCING = 'SET_IS_SYNCING';
 const MARK_ACTION_AS_PROCESSED = 'MARK_ACTION_AS_PROCESSED';
 const REPLACE_OFFLINE_STATE = 'REPLACE_OFFLINE_STATE';
 const OFFLINE_QUEUE_REPLACE_ROOT_STATE = 'OFFLINE_QUEUE_REPLACE_ROOT_STATE';
-const SET_IS_REBUILDING = 'SET_IS_REBUILDING';
 const REPLACE_ACTION_IN_QUEUE = 'REPLACE_ACTION_IN_QUEUE';
 const REMOVE_ACTIONS_IN_QUEUE = 'REMOVE_ACTIONS_IN_QUEUE';
 
 export const offlineActions = {
-  SET_IS_SYNCING: true,
-  MARK_ACTION_AS_PROCESSED: true,
-  REPLACE_OFFLINE_STATE: true,
-  OFFLINE_QUEUE_REPLACE_ROOT_STATE: true,
-  SET_IS_REBUILDING: true,
-  REPLACE_ACTION_IN_QUEUE: true,
-  REMOVE_ACTIONS_IN_QUEUE: true,
+  [SET_IS_SYNCING]: true,
+  [MARK_ACTION_AS_PROCESSED]: true,
+  [REPLACE_OFFLINE_STATE]: true,
+  [OFFLINE_QUEUE_REPLACE_ROOT_STATE]: true,
+  [REPLACE_ACTION_IN_QUEUE]: true,
+  [REMOVE_ACTIONS_IN_QUEUE]: true,
 };
+
+export const isInternalOfflineAction = (action: AnyAction) => action.type in offlineActions;
 
 export const createRootReducer = (rootReducer: Reducer) => (state: any, action: AnyAction) => {
   let nextState = state;
@@ -58,11 +57,6 @@ export const reducer = (state = initialState, action: AnyAction) => {
       };
     case REPLACE_OFFLINE_STATE:
       return action.payload;
-    case SET_IS_REBUILDING:
-      return {
-        ...state,
-        isRebuilding: action.payload,
-      };
     case REPLACE_ACTION_IN_QUEUE: {
       const queue = [...state.queue];
       queue[action.payload.index] = action.payload.action;
@@ -105,11 +99,6 @@ export const replaceOfflineState = (state: OfflineState) => ({
 export const replaceRootState = (state: any) => ({
   type: OFFLINE_QUEUE_REPLACE_ROOT_STATE,
   payload: state,
-});
-
-export const setIsRebuilding = (rebuilding: boolean) => ({
-  type: SET_IS_REBUILDING,
-  payload: rebuilding,
 });
 
 export const replaceActionInQueue = (index: number, action: OfflineAction) => ({

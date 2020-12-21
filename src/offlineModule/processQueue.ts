@@ -1,9 +1,10 @@
-import {applyMiddleware, createStore, Middleware, Store} from "redux";
+import {AnyAction, applyMiddleware, compose, createStore, Middleware, Store} from "redux";
+import {reduxBatch} from '@manaflair/redux-batch';
 import _ from 'lodash';
 import {
   ApiAction,
   ApiDependentAction,
-  ApiResourceAction,
+  ApiResourceAction, ArrayAction,
   Configure,
   OfflineAction,
   OfflineConfig,
@@ -16,15 +17,16 @@ import {
   replaceOfflineState,
   setIsSyncing,
   offlineActions,
-  setIsRebuilding,
   replaceActionInQueue,
-  reducer, removeActionsInQueue,
+  removeActionsInQueue, isInternalOfflineAction,
 } from "./redux";
 
 type GetState = (store: Store) => OfflineState;
 
+const createArrayAction = (actions: AnyAction[]): ArrayAction => Object.assign(actions, {type: undefined});
+
 type InternalConfig = {
-  store: Store,
+  store: Store<any, ArrayAction | AnyAction>,
   optimisticStore: Store,
   config: OfflineConfig,
   getState: GetState,
@@ -38,17 +40,23 @@ const makeGetState = (config: OfflineConfig): GetState => (store: Store) => {
   return config.selector(store.getState());
 };
 
-const rebuildOptimisticStore = (internalConfig: InternalConfig) => {
+const getOptimisticStoreRebuildActions = (internalConfig: InternalConfig) => {
   const {optimisticStore, store, getState} = internalConfig;
   const offlineState = getState(optimisticStore);
-  optimisticStore.dispatch(replaceRootState(store.getState()));
-  const offlineStateLoading = reducer(offlineState, setIsRebuilding(true));
-  optimisticStore.dispatch(replaceOfflineState(offlineStateLoading));
-  offlineState.queue.forEach(optimisticAction => {
-    const {offline, ...action} = optimisticAction;
-    optimisticStore.dispatch(action);
-  });
-  optimisticStore.dispatch(setIsRebuilding(false));
+
+  return createArrayAction([
+    replaceRootState(store.getState()),
+    replaceOfflineState(offlineState),
+    ...(offlineState.queue.map(optimisticAction => {
+      const {offline, ...action} = optimisticAction;
+      return action;
+    })),
+  ]);
+};
+
+const rebuildOptimisticStore = (internalConfig: InternalConfig) => {
+  const {optimisticStore} = internalConfig;
+  optimisticStore.dispatch(getOptimisticStoreRebuildActions(internalConfig));
 };
 
 const getResourceId = (action: ApiAction | ApiResourceAction) => _.get(action, action.offline.dependencyPath);
@@ -94,6 +102,8 @@ const removeDependentActions = (
 
   actionsToRemove.forEach(action => {
     if (actionHasSideEffect(action)) {
+      // TODO Option for dealing with dependent actions instead of removing?
+      // Might want to convert the action to something else/retry
       removeDependentActions(internalConfig, action);
     }
   });
@@ -142,8 +152,22 @@ const handlePassthroughs = (internalConfig: InternalConfig, action: ApiDependent
   rebuildOptimisticStore(internalConfig);
 };
 
+const handleApiRequest = (internalConfig: InternalConfig, action: ApiAction) => {
+  const {config} = internalConfig;
+
+  return config.makeApiRequest(action.offline.apiData)
+    .then((response) => {
+      handleOptimisticUpdateResolved(internalConfig, action, response);
+      return syncNextPendingAction(internalConfig);
+    })
+    .catch((error) => {
+      handleOptimisticUpdateRollback(internalConfig, action, error);
+      return syncNextPendingAction(internalConfig);
+    });
+};
+
 const syncNextPendingAction = (internalConfig: InternalConfig): Promise<any> => {
-  const {config, optimisticStore, getState} = internalConfig;
+  const {optimisticStore, getState} = internalConfig;
   const state = getState(optimisticStore);
   if (state.queue.length === 0) return Promise.resolve();
   const action = state.queue[0];
@@ -157,33 +181,19 @@ const syncNextPendingAction = (internalConfig: InternalConfig): Promise<any> => 
     throw new Error(`Unexpected action found in queue: ${JSON.stringify(action)}`);
   }
 
-  return config.makeApiRequest(action.offline.apiData)
-    .then((response) => {
-      console.log('got response', response);
-      handleOptimisticUpdateResolved(internalConfig, action, response);
-      return syncNextPendingAction(internalConfig);
-    })
-    .catch((error) => {
-      console.log('caught error', error);
-      handleOptimisticUpdateRollback(internalConfig, action, error);
-      return syncNextPendingAction(internalConfig);
-    });
+  return handleApiRequest(internalConfig, action);
 };
 
 export const optimisticActionSpy: OptimisticActionSpy = (config) => optimisticStore => next => action => {
-  const {store, getState} = config;
+  const {store} = config;
 
-  const isNonOfflineAction = (
-    !isOfflineAction(action)
-    && !(action.type in offlineActions)
-    && !getState(optimisticStore as Store).isRebuilding
-  );
+  const isNonOfflineAction = !isOfflineAction(action) && !isInternalOfflineAction(action);
 
   const mergedConfig = {...config, optimisticStore: optimisticStore as Store};
 
   if (isNonOfflineAction) {
     store.dispatch(action);
-    rebuildOptimisticStore(mergedConfig);
+    next(getOptimisticStoreRebuildActions(mergedConfig));
   } else {
     next(action);
   }
@@ -192,6 +202,7 @@ export const optimisticActionSpy: OptimisticActionSpy = (config) => optimisticSt
 const realStoreMiddleware: Middleware = () => next => action => {
   if (isOfflineAction(action)) {
     // Lets us use the same rootReducer for the real store and optimistic store
+    // without re-queueing the offline actions
     const {offline, ...rest} = action;
     next(rest);
   } else {
@@ -241,10 +252,18 @@ const configure: Configure = (config) => {
 
   const optimisticMiddleware = optimisticActionSpy(internalConfig);
 
+  // Duplication of reduxBatch is not a bug, we need it duplicated to be able
+  // to dispatch batched actions from optimisticMiddleware
+  const storeEnhancer = compose(
+    reduxBatch,
+    applyMiddleware(optimisticMiddleware),
+    reduxBatch,
+  );
+
   const run = makeRun(internalConfig);
 
   return {
-    optimisticMiddleware,
+    storeEnhancer,
     run,
     store,
   }

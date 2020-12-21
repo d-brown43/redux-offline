@@ -1,4 +1,5 @@
-import {AnyAction, applyMiddleware, createStore, Store} from "redux";
+import {AnyAction, createStore, Store} from "redux";
+import {composeWithDevTools} from 'redux-devtools-extension';
 import rootReducer, {
   getOffline,
   State,
@@ -11,7 +12,7 @@ import api from "./api";
 export type StoreType = Store<State, AnyAction>;
 
 const configureStore = () => {
-  const {run, optimisticMiddleware, store} = configure({
+  const {run, storeEnhancer, store} = configure({
     selector: getOffline,
     getFulfilledAction: mergedGetFulfilledAction,
     getRollbackAction: mergedGetRollbackAction,
@@ -21,7 +22,9 @@ const configureStore = () => {
 
   const optimisticStore: StoreType = createStore(
     createRootReducer(rootReducer),
-    applyMiddleware(optimisticMiddleware)
+    composeWithDevTools(
+      storeEnhancer
+    ),
   );
 
   run(optimisticStore);
