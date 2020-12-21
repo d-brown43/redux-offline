@@ -40,7 +40,7 @@ export type OfflineState = {
 }
 
 export type GetFulfilledAction = (optimisticAction: ApiAction, apiResponse: any) => ApiResourceAction | null;
-export type GetRollbackAction = (optimisticAction: ApiAction, apiResponse: any) => ApiResourceAction | null;
+export type GetRollbackAction = (optimisticAction: ApiAction, apiResponse: any) => AnyAction | null;
 
 export type OfflineConfig = {
   selector: (state: any) => OfflineState

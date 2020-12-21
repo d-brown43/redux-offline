@@ -17,20 +17,23 @@ export type TestState = {
   entities: MyTestObject[]
   toggleIsOn: boolean
   currentObjectId: string | null,
+  errors: string[],
 }
 
 const initialState: TestState = {
   entities: [],
   toggleIsOn: false,
   currentObjectId: null,
+  errors: [],
 };
 
 const CREATE_TEST_OBJECT = 'CREATE_TEST_OBJECT';
 const CREATE_TEST_OBJECT_RESOLVED = 'CREATE_TEST_OBJECT_RESOLVED';
 const NON_OPTIMISTIC_TOGGLE = 'NON_OPTIMISTIC_TOGGLE';
 const SET_CURRENT_OBJECT = 'SET_CURRENT_OBJECT';
+const CREATE_ERROR = 'CREATE_ERROR';
 
-type CreateTestObjectArgs = { title: string };
+type CreateTestObjectArgs = { title: string, fails: boolean };
 type TestObjectAction = AppAction<MyTestObject> & OfflineAction;
 type CreateTestObject = AppActionCreator<CreateTestObjectArgs, TestObjectAction>;
 
@@ -41,6 +44,10 @@ type CreateNonOptimisticToggle = AppActionCreator<NonOptimisticArgs, NonOptimist
 type SetCurrentObjectArgs = string | null;
 type SetCurrentObjectAction = AppAction<SetCurrentObjectArgs>;
 type CreateSetCurrentObject = AppActionCreator<SetCurrentObjectArgs, SetCurrentObjectAction>;
+
+type CreateErrorArgs = string;
+type CreateErrorAction = AppAction<CreateErrorArgs>;
+type CreateCreateErrorAction = AppActionCreator<CreateErrorArgs, CreateErrorAction>;
 
 const reducer: AppReducer<TestState> = (state = initialState, action) => {
   switch (action.type) {
@@ -64,6 +71,11 @@ const reducer: AppReducer<TestState> = (state = initialState, action) => {
         ...state,
         toggleIsOn: action.payload,
       };
+    case CREATE_ERROR:
+      return {
+        ...state,
+        errors: state.errors.concat([action.payload]),
+      };
     default:
       return state;
   }
@@ -71,7 +83,7 @@ const reducer: AppReducer<TestState> = (state = initialState, action) => {
 
 export default reducer;
 
-export const createTestObject: CreateTestObject = ({title}) => {
+export const createTestObject: CreateTestObject = ({title, fails}) => {
   const now = new Date().toISOString();
   const payloadData = {
     title,
@@ -88,6 +100,7 @@ export const createTestObject: CreateTestObject = ({title}) => {
       apiData: {
         type: API_CREATE_TEST_OBJECT,
         data: payloadData,
+        fails,
       },
       dependencyPath: 'payload.id'
     }
@@ -115,6 +128,11 @@ export const setCurrentObject: CreateSetCurrentObject = (objectId) => ({
   }
 });
 
+export const addError: CreateCreateErrorAction = (error) => ({
+  type: CREATE_ERROR,
+  payload: error,
+});
+
 export const getFulfilledActions: GetFulfilledAction = (optimisticAction, apiResponse) => {
   switch (optimisticAction.type) {
     case CREATE_TEST_OBJECT:
@@ -124,6 +142,12 @@ export const getFulfilledActions: GetFulfilledAction = (optimisticAction, apiRes
   }
 };
 
-export const getRollbackActions: GetRollbackAction = () => {
-  return null;
+export const getRollbackActions: GetRollbackAction = (optimisticAction, apiResponse) => {
+  console.log('optimisticAction', optimisticAction);
+  switch (optimisticAction.type) {
+    case CREATE_TEST_OBJECT:
+      return addError(`Failed to create object: "${optimisticAction.payload.title}", found error: ${apiResponse.toString()}`);
+    default:
+      return null;
+  }
 };

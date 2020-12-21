@@ -13,19 +13,34 @@ const AppState = () => {
     }
     return null;
   });
+  const isToggled = useSelector<State, boolean>(state => state.test.toggleIsOn);
+  const errors = useSelector<State, string[]>(state => state.test.errors);
 
   return (
     <div>
-      <label>Selected: {selectedObject?.title}</label>
-      <ul>
-        {entities.map(entity => (
-          <li key={entity.id}>
+      <div>
+        <label>Other state</label>
+        <div>Toggled: {isToggled ? 'true' : 'false'}</div>
+      </div>
+      <div style={{marginTop: '32px'}}>
+        <label>Selected: {selectedObject?.title}</label>
+        <ul>
+          {entities.map(entity => (
+            <li key={entity.id}>
             <span>
               {entity.title}
             </span>
-          </li>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div style={{marginTop: '32px'}}>
+        {errors.map((error, i) => (
+          <div key={i} style={{marginTop: '8px'}}>
+            {error}
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   )
 };

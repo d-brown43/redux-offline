@@ -14,7 +14,12 @@ const TestControls = () => {
   const [testObjectCount, setTestObjectCount] = useState(0);
 
   const testAction = () => {
-    dispatch(createTestObject({title: `Test Object ${testObjectCount}`}));
+    dispatch(createTestObject({title: `Test Object ${testObjectCount}`, fails: false}));
+    setTestObjectCount(prevCount => prevCount + 1);
+  };
+
+  const createFailTestAction = () => {
+    dispatch(createTestObject({title: `Test Object ${testObjectCount}`, fails: true}));
     setTestObjectCount(prevCount => prevCount + 1);
   };
 
@@ -29,6 +34,7 @@ const TestControls = () => {
   return (
     <div>
       <button type="button" onClick={testAction}>Create Test Object</button>
+      <button type="button" onClick={createFailTestAction}>Create Fail Test Object</button>
       <button type="button" onClick={testToggle}>Toggle</button>
       <button type="button" onClick={currentObject}>Set Current</button>
     </div>

@@ -4,6 +4,7 @@ export const API_CREATE_TEST_OBJECT = 'API_CREATE_TEST_OBJECT';
 
 type ApiData = {
   type: string;
+  fails?: boolean
   [other: string]: any
 }
 
@@ -22,8 +23,13 @@ const api = (apiData: ApiData) => {
     console.log('making fake request with data', apiData);
     window.setTimeout(() => {
       const fakeResponse = fakeApi(apiData);
-      console.log('resolve response for request data', apiData, fakeResponse);
-      resolve(fakeResponse);
+      if (apiData.fails) {
+        console.info('REJECT response for request data', apiData);
+        reject('fake error');
+      } else {
+        console.info('RESOLVE response for request data', apiData, fakeResponse);
+        resolve(fakeResponse);
+      }
     }, 5000);
   });
 };
