@@ -12,7 +12,7 @@ export const isDependentAction = (action: OfflineAction): action is ApiDependent
 };
 
 export const isResolvedAction = (action: AnyAction): action is ApiResourceAction => {
-  return isOfflineAction(action) && !actionHasSideEffect(action) && 'dependencyPaths' in action.offline;
+  return isOfflineAction(action) && !actionHasSideEffect(action) && 'resolvedPaths' in action.offline;
 };
 
 export const isPassThrough = (action: AnyAction) => {

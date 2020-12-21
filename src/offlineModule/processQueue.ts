@@ -8,7 +8,7 @@ import {
   Configure,
   OfflineAction,
   OfflineConfig,
-  OfflineState
+  OfflineState, ResolvedApiEntityAction, ResolvedPaths
 } from "./types";
 import {isDependentAction, actionHasSideEffect, isOfflineAction, isResolvedAction} from "./utils";
 import {
@@ -72,7 +72,7 @@ const rebuildOptimisticStore = (internalConfig: InternalConfig) => {
   optimisticStore.dispatch(actions);
 };
 
-const getSingularResource = (action: ApiAction | ApiResourceAction, path: string) => _.get(action, path);
+const getSingularResource = (action: object, path: string) => _.get(action, path);
 
 const getRemoteResourcePaths = (action: ApiAction | ApiResourceAction) => {
   if (typeof action.offline.dependencyPaths === 'string') {
@@ -102,7 +102,28 @@ const getDependencies = (action: ApiDependentAction) => {
   ));
 };
 
-const updateDependencies = (action: ApiDependentAction, optimisticAction: ApiResourceAction, fulfilledAction: ApiResourceAction) => {
+const getResolvedResourcePath = (optimisticPath: string, resolvedPaths: ResolvedPaths) => {
+  const getErrorMessage = () => {
+    return `Unable to find matching resource path`;
+  };
+
+  if (typeof resolvedPaths === 'string') {
+    if (optimisticPath !== resolvedPaths) {
+      throw new Error(getErrorMessage());
+    }
+    return resolvedPaths;
+  }
+  const result = resolvedPaths.find(pathOrPair => {
+    const comparisonPath = typeof pathOrPair === 'string' ? pathOrPair : pathOrPair[0];
+    return comparisonPath === optimisticPath;
+  });
+  if (!result) {
+    throw new Error(getErrorMessage());
+  }
+  return typeof result === 'string' ? result : result[0];
+};
+
+const updateDependencies = (action: ApiDependentAction, optimisticAction: ApiResourceAction, fulfilledAction: ResolvedApiEntityAction) => {
   const dependencyPaths = getDependencyPaths(action);
   const optimisticResourcePaths = getRemoteResourcePaths(optimisticAction);
 
@@ -113,9 +134,8 @@ const updateDependencies = (action: ApiDependentAction, optimisticAction: ApiRes
     if (!optimisticResourcePath) {
       throw new Error('Could not find matching resource');
     }
-    // TODO need to map old resource paths to new resource paths, they might change
-    // in the fulfilled action
-    return getSingularResource(fulfilledAction, optimisticResourcePath);
+    const resolvedPath = getResolvedResourcePath(optimisticResourcePath, fulfilledAction.offline.resolvedPaths);
+    return getSingularResource(fulfilledAction, resolvedPath);
   };
 
   return dependencyPaths.reduce((acc, path) => {
@@ -132,7 +152,7 @@ const actionDependsOn = (action: ApiAction, dependentAction: ApiDependentAction)
 const updateDependentActions = (
   internalConfig: InternalConfig,
   optimisticAction: ApiAction,
-  fulfilledAction: ApiResourceAction,
+  fulfilledAction: ResolvedApiEntityAction,
 ) => {
   const {getState, optimisticStore} = internalConfig;
   const queue: OfflineAction[] = getState(optimisticStore).queue;
@@ -180,7 +200,7 @@ const handleOptimisticUpdateResolved = (
     if (!isResolvedAction(fulfilledAction)) {
       console.error('Expecting a resolved action or null to be returned by getFulfilledAction, got', fulfilledAction);
       console.info('A resolved action is an action with a `dependencyPath` attribute for the offline metadata and no other properties');
-      throw new Error(fulfilledAction);
+      throw new Error(JSON.stringify(fulfilledAction));
     }
     store.dispatch(fulfilledAction);
     updateDependentActions(internalConfig, action, fulfilledAction);

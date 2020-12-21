@@ -115,7 +115,7 @@ const createTestObjectResolved = (testObject: MyTestObject) => ({
   type: CREATE_TEST_OBJECT_RESOLVED,
   payload: testObject,
   offline: {
-    dependencyPaths: testObjectDependencyPaths,
+    resolvedPaths: 'payload.id',
   }
 });
 

@@ -8,15 +8,21 @@ export type ApiResourceMetadata = BaseMetadata & {
   dependencyPaths: string | string[]
 }
 
-export type ApiEntity = BaseMetadata & ApiResourceMetadata & {
+export type ApiEntityMetadata = BaseMetadata & ApiResourceMetadata & {
   apiData: any
 }
 
-export type DependsOn = BaseMetadata & {
+export type DependsOnMetadata = BaseMetadata & {
   dependsOn: string | string[]
 }
 
-export type OfflineMetadata = DependsOn | ApiEntity | ApiResourceMetadata;
+export type ResolvedPaths = (string | [string, string])[] | string;
+
+export type ResolvedEntityMetadata = BaseMetadata & {
+  resolvedPaths: ResolvedPaths
+}
+
+export type OfflineMetadata = DependsOnMetadata | ApiEntityMetadata | ApiResourceMetadata | ResolvedEntityMetadata;
 
 export interface OfflineAction extends AnyAction {
   offline: OfflineMetadata
@@ -26,12 +32,16 @@ export interface ApiResourceAction extends OfflineAction {
   offline: ApiResourceMetadata
 }
 
+export interface ResolvedApiEntityAction extends OfflineAction {
+  offline: ResolvedEntityMetadata
+}
+
 export interface ApiAction extends OfflineAction {
-  offline: ApiEntity
+  offline: ApiEntityMetadata
 }
 
 export interface ApiDependentAction extends OfflineAction {
-  offline: DependsOn
+  offline: DependsOnMetadata
 }
 
 export type OfflineState = {
@@ -39,7 +49,7 @@ export type OfflineState = {
   isSyncing: boolean
 }
 
-export type GetFulfilledAction = (optimisticAction: ApiAction, apiResponse: any) => ApiResourceAction | null;
+export type GetFulfilledAction = (optimisticAction: ApiAction, apiResponse: any) => ResolvedApiEntityAction | null;
 export type GetRollbackAction = (optimisticAction: ApiAction, apiResponse: any) => AnyAction | null;
 
 export type OfflineConfig = {
