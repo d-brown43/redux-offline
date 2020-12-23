@@ -1,19 +1,19 @@
-import {AnyAction, Reducer} from "redux";
-import {OfflineAction, OfflineState} from "./types";
-import {isOfflineAction, isPassThrough} from "./utils";
+import { AnyAction, Reducer } from "redux";
+import { OfflineAction, OfflineState } from "./types";
+import { isOfflineAction, isPassThrough } from "./utils";
 
 const initialState: OfflineState = {
   queue: [],
   isSyncing: false,
 };
 
-const OFFLINE_MODULE_INIT_STATE = 'OFFLINE_MODULE_INIT_STATE';
-const SET_IS_SYNCING = 'SET_IS_SYNCING';
-const MARK_ACTION_AS_PROCESSED = 'MARK_ACTION_AS_PROCESSED';
-export const REPLACE_OFFLINE_STATE = 'REPLACE_OFFLINE_STATE';
-const OFFLINE_QUEUE_REPLACE_ROOT_STATE = 'OFFLINE_QUEUE_REPLACE_ROOT_STATE';
-const REPLACE_ACTION_IN_QUEUE = 'REPLACE_ACTION_IN_QUEUE';
-const REMOVE_ACTIONS_IN_QUEUE = 'REMOVE_ACTIONS_IN_QUEUE';
+const OFFLINE_MODULE_INIT_STATE = "OFFLINE_MODULE_INIT_STATE";
+const SET_IS_SYNCING = "SET_IS_SYNCING";
+const MARK_ACTION_AS_PROCESSED = "MARK_ACTION_AS_PROCESSED";
+export const REPLACE_OFFLINE_STATE = "REPLACE_OFFLINE_STATE";
+const OFFLINE_QUEUE_REPLACE_ROOT_STATE = "OFFLINE_QUEUE_REPLACE_ROOT_STATE";
+const REPLACE_ACTION_IN_QUEUE = "REPLACE_ACTION_IN_QUEUE";
+const REMOVE_ACTIONS_IN_QUEUE = "REMOVE_ACTIONS_IN_QUEUE";
 
 export const offlineActions = {
   [OFFLINE_MODULE_INIT_STATE]: true,
@@ -25,10 +25,13 @@ export const offlineActions = {
   [REMOVE_ACTIONS_IN_QUEUE]: true,
 };
 
-export const isInternalOfflineAction = (action: AnyAction) => action.type in offlineActions;
+export const isInternalOfflineAction = (action: AnyAction) =>
+  action.type in offlineActions;
 
 export const createRootReducer = (rootReducer: Reducer) => {
-  const initialState = rootReducer(undefined, {type: OFFLINE_MODULE_INIT_STATE});
+  const initialState = rootReducer(undefined, {
+    type: OFFLINE_MODULE_INIT_STATE,
+  });
   return (state: any = initialState, action: AnyAction) => {
     if (action.type === OFFLINE_QUEUE_REPLACE_ROOT_STATE) {
       return action.payload;
@@ -41,17 +44,14 @@ export const reducer = (state = initialState, action: AnyAction) => {
   if (isOfflineAction(action) && !isPassThrough(action)) {
     return {
       ...state,
-      queue: [
-        ...state.queue,
-        action,
-      ]
-    }
+      queue: [...state.queue, action],
+    };
   }
   switch (action.type) {
     case MARK_ACTION_AS_PROCESSED:
       return {
         ...state,
-        queue: state.queue.filter(a => a !== action.payload),
+        queue: state.queue.filter((a) => a !== action.payload),
       };
     case SET_IS_SYNCING:
       return {
@@ -71,7 +71,7 @@ export const reducer = (state = initialState, action: AnyAction) => {
     case REMOVE_ACTIONS_IN_QUEUE: {
       return {
         ...state,
-        queue: state.queue.filter(a => !action.payload.includes(a)),
+        queue: state.queue.filter((a) => !action.payload.includes(a)),
       };
     }
     default:
@@ -106,7 +106,7 @@ export const replaceActionInQueue = (index: number, action: OfflineAction) => ({
   payload: {
     index,
     action,
-  }
+  },
 });
 
 export const removeActionsInQueue = (actions: OfflineAction[]) => ({

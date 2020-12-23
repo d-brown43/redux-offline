@@ -1,24 +1,27 @@
-import {AppAction, AppActionCreator, AppReducer} from "./types";
+import { AppAction, AppActionCreator, AppReducer } from "./types";
 import {
-  GetFulfilledAction, GetRollbackAction,
-  OfflineAction, ResolvedDependencies, ResourceIdentifier,
+  GetFulfilledAction,
+  GetRollbackAction,
+  OfflineAction,
+  ResolvedDependencies,
+  ResourceIdentifier,
 } from "../offlineModule";
-import {getTempId} from "../utils";
-import {API_CREATE_TEST_OBJECT} from "./api";
+import { getTempId } from "../utils";
+import { API_CREATE_TEST_OBJECT } from "./api";
 
 export type MyTestObject = {
-  id: string
-  title: string
-  createdAt: string
-  updatedAt: string
-}
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type TestState = {
-  entities: MyTestObject[]
-  toggleIsOn: boolean
-  currentObjectId: string | null,
-  errors: string[],
-}
+  entities: MyTestObject[];
+  toggleIsOn: boolean;
+  currentObjectId: string | null;
+  errors: string[];
+};
 
 const initialState: TestState = {
   entities: [],
@@ -27,31 +30,43 @@ const initialState: TestState = {
   errors: [],
 };
 
-const CREATE_TEST_OBJECT = 'CREATE_TEST_OBJECT';
-const CREATE_TEST_OBJECT_RESOLVED = 'CREATE_TEST_OBJECT_RESOLVED';
-const NON_OPTIMISTIC_TOGGLE = 'NON_OPTIMISTIC_TOGGLE';
-const SET_CURRENT_OBJECT = 'SET_CURRENT_OBJECT';
-const CREATE_ERROR = 'CREATE_ERROR';
+const CREATE_TEST_OBJECT = "CREATE_TEST_OBJECT";
+const CREATE_TEST_OBJECT_RESOLVED = "CREATE_TEST_OBJECT_RESOLVED";
+const NON_OPTIMISTIC_TOGGLE = "NON_OPTIMISTIC_TOGGLE";
+const SET_CURRENT_OBJECT = "SET_CURRENT_OBJECT";
+const CREATE_ERROR = "CREATE_ERROR";
 
 const ApiResourceTypes = {
-  TEST_OBJECT_ID: 'TEST_OBJECT:id',
+  TEST_OBJECT_ID: "TEST_OBJECT:id",
 };
 
-type CreateTestObjectArgs = { title: string, fails: boolean };
+type CreateTestObjectArgs = { title: string; fails: boolean };
 type TestObjectAction = AppAction<MyTestObject> & OfflineAction;
-type CreateTestObject = AppActionCreator<CreateTestObjectArgs, TestObjectAction>;
+type CreateTestObject = AppActionCreator<
+  CreateTestObjectArgs,
+  TestObjectAction
+>;
 
 type NonOptimisticArgs = boolean;
 type NonOptimisticToggleAction = AppAction<boolean>;
-type CreateNonOptimisticToggle = AppActionCreator<NonOptimisticArgs, NonOptimisticToggleAction>;
+type CreateNonOptimisticToggle = AppActionCreator<
+  NonOptimisticArgs,
+  NonOptimisticToggleAction
+>;
 
 type SetCurrentObjectArgs = string | null;
 type SetCurrentObjectAction = AppAction<SetCurrentObjectArgs>;
-type CreateSetCurrentObject = AppActionCreator<SetCurrentObjectArgs, SetCurrentObjectAction>;
+type CreateSetCurrentObject = AppActionCreator<
+  SetCurrentObjectArgs,
+  SetCurrentObjectAction
+>;
 
 type CreateErrorArgs = string;
 type CreateErrorAction = AppAction<CreateErrorArgs>;
-type CreateCreateErrorAction = AppActionCreator<CreateErrorArgs, CreateErrorAction>;
+type CreateCreateErrorAction = AppActionCreator<
+  CreateErrorArgs,
+  CreateErrorAction
+>;
 
 const reducer: AppReducer<TestState> = (state = initialState, action) => {
   switch (action.type) {
@@ -87,7 +102,7 @@ const reducer: AppReducer<TestState> = (state = initialState, action) => {
 
 export default reducer;
 
-export const createTestObject: CreateTestObject = ({title, fails}) => {
+export const createTestObject: CreateTestObject = ({ title, fails }) => {
   const now = new Date().toISOString();
   const payloadData = {
     title,
@@ -96,9 +111,9 @@ export const createTestObject: CreateTestObject = ({title, fails}) => {
   };
   const dependencyPaths: ResourceIdentifier[] = [
     {
-      path: 'payload.id',
+      path: "payload.id",
       type: ApiResourceTypes.TEST_OBJECT_ID,
-    }
+    },
   ];
   return {
     type: CREATE_TEST_OBJECT,
@@ -114,21 +129,21 @@ export const createTestObject: CreateTestObject = ({title, fails}) => {
       },
       // States what the API will change
       dependencyPaths,
-    }
+    },
   };
 };
 
 const createTestObjectResolved = (testObject: MyTestObject) => {
   const resolvedDependencies: ResolvedDependencies = [
     {
-      path: 'payload.nested.id',
+      path: "payload.nested.id",
       type: ApiResourceTypes.TEST_OBJECT_ID,
-    }
+    },
   ];
-  return ({
+  return {
     type: CREATE_TEST_OBJECT_RESOLVED,
     payload: {
-      nested: testObject
+      nested: testObject,
     },
     offline: {
       // States the data that has changed from the original action to this one,
@@ -137,8 +152,8 @@ const createTestObjectResolved = (testObject: MyTestObject) => {
       // to update this, we need to say where this new id can be found within this action,
       // and where the id field was in the original action
       resolvedDependencies,
-    }
-  });
+    },
+  };
 };
 
 export const nonOptimisticToggle: CreateNonOptimisticToggle = (isOn) => ({
@@ -151,10 +166,10 @@ export const setCurrentObject: CreateSetCurrentObject = (objectId) => ({
   payload: objectId,
   offline: {
     dependsOn: {
-      path: 'payload',
-      type: ApiResourceTypes.TEST_OBJECT_ID
+      path: "payload",
+      type: ApiResourceTypes.TEST_OBJECT_ID,
     },
-  }
+  },
 });
 
 export const addError: CreateCreateErrorAction = (error) => ({
@@ -162,7 +177,10 @@ export const addError: CreateCreateErrorAction = (error) => ({
   payload: error,
 });
 
-export const getFulfilledActions: GetFulfilledAction = (optimisticAction, apiResponse) => {
+export const getFulfilledActions: GetFulfilledAction = (
+  optimisticAction,
+  apiResponse
+) => {
   switch (optimisticAction.type) {
     case CREATE_TEST_OBJECT:
       return createTestObjectResolved(apiResponse);
@@ -171,10 +189,17 @@ export const getFulfilledActions: GetFulfilledAction = (optimisticAction, apiRes
   }
 };
 
-export const getRollbackActions: GetRollbackAction = (optimisticAction, apiResponse) => {
+export const getRollbackActions: GetRollbackAction = (
+  optimisticAction,
+  apiResponse
+) => {
   switch (optimisticAction.type) {
     case CREATE_TEST_OBJECT:
-      return addError(`Failed to create object: "${optimisticAction.payload.title}", found error: ${apiResponse.toString()}`);
+      return addError(
+        `Failed to create object: "${
+          optimisticAction.payload.title
+        }", found error: ${apiResponse.toString()}`
+      );
     default:
       return null;
   }

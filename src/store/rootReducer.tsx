@@ -2,21 +2,26 @@ import testReducer, {
   TestState,
   getFulfilledActions,
   getRollbackActions,
-} from './test';
-import {combineReducers} from "redux";
-import {mergeGetFulfilledActions, mergeGetRollbackActions, offlineReducer, OfflineState} from "../offlineModule";
+} from "./test";
+import { combineReducers } from "redux";
+import {
+  mergeGetFulfilledActions,
+  mergeGetRollbackActions,
+  offlineReducer,
+  OfflineState,
+} from "../offlineModule";
 
 export const mergedGetFulfilledAction = mergeGetFulfilledActions(
-  getFulfilledActions,
+  getFulfilledActions
 );
 
 export const mergedGetRollbackAction = mergeGetRollbackActions(
-  getRollbackActions,
+  getRollbackActions
 );
 
 export type State = {
-  offline: OfflineState
-  test: TestState
+  offline: OfflineState;
+  test: TestState;
 };
 
 const rootReducer = combineReducers({

@@ -1,6 +1,12 @@
-import {applyMiddleware, compose, createStore, Middleware, Store} from "redux";
-import {reduxBatch} from '@manaflair/redux-batch';
-import _ from 'lodash';
+import {
+  applyMiddleware,
+  compose,
+  createStore,
+  Middleware,
+  Store,
+} from "redux";
+import { reduxBatch } from "@manaflair/redux-batch";
+import _ from "lodash";
 import {
   ApiAction,
   ApiDependentAction,
@@ -29,40 +35,46 @@ import {
   replaceActionInQueue,
   removeActionsInQueue,
 } from "./redux";
-import {validateResourceIdentifiersOnAction} from "./schemaValidation";
-import {GetState, InternalConfig, OptimisticConfig} from "./internalTypes";
-import {rebuildOptimisticStore} from "./manageState";
-import {createOptimisticMiddleware} from "./middleware";
-
+import { validateResourceIdentifiersOnAction } from "./schemaValidation";
+import { GetState, InternalConfig, OptimisticConfig } from "./internalTypes";
+import { rebuildOptimisticStore } from "./manageState";
+import { createOptimisticMiddleware } from "./middleware";
 
 const makeGetState = (config: OfflineConfig): GetState => (store: Store) => {
   return config.selector(store.getState());
 };
 
-
-const getRemoteResources = (action: ApiAction | ApiResourceAction): Resource[] => {
-  return getRemoteResourceIdentifiers(action).map(({path, type}) => ({
+const getRemoteResources = (
+  action: ApiAction | ApiResourceAction
+): Resource[] => {
+  return getRemoteResourceIdentifiers(action).map(({ path, type }) => ({
     type,
     value: getSingularResource(action, path),
   }));
 };
 
-const getSingularResource = (action: object, path: string) => _.get(action, path);
+const getSingularResource = (action: object, path: string) =>
+  _.get(action, path);
 
 const getDependencies = (action: ApiDependentAction): Resource[] => {
-  return getDependencyResourceIdentifiers(action).map(({type, path}) => ({
+  return getDependencyResourceIdentifiers(action).map(({ type, path }) => ({
     type,
-    value: getSingularResource(action, path)
+    value: getSingularResource(action, path),
   }));
 };
 
-const getResolvedResourceIdentifier = (optimisticIdentifier: ResourceIdentifier, resolvedIdentifiers: ResolvedDependencies) => {
+const getResolvedResourceIdentifier = (
+  optimisticIdentifier: ResourceIdentifier,
+  resolvedIdentifiers: ResolvedDependencies
+) => {
   const getErrorMessage = () => {
     return `Unable to find matching resource path`;
   };
 
   if (!Array.isArray(resolvedIdentifiers)) {
-    if (!isResourceIdentifiersEqual(optimisticIdentifier, resolvedIdentifiers)) {
+    if (
+      !isResourceIdentifiersEqual(optimisticIdentifier, resolvedIdentifiers)
+    ) {
       throw new Error(getErrorMessage());
     }
     return resolvedIdentifiers;
@@ -76,56 +88,89 @@ const getResolvedResourceIdentifier = (optimisticIdentifier: ResourceIdentifier,
   return result;
 };
 
-const updateDependencies = (action: ApiDependentAction, optimisticAction: ApiResourceAction, fulfilledAction: ResolvedApiEntityAction) => {
-  const dependencyResourceIdentifiers = getDependencyResourceIdentifiers(action);
-  const optimisticResourceIdentifiers = getRemoteResourceIdentifiers(optimisticAction);
+const updateDependencies = (
+  action: ApiDependentAction,
+  optimisticAction: ApiResourceAction,
+  fulfilledAction: ResolvedApiEntityAction
+) => {
+  const dependencyResourceIdentifiers = getDependencyResourceIdentifiers(
+    action
+  );
+  const optimisticResourceIdentifiers = getRemoteResourceIdentifiers(
+    optimisticAction
+  );
 
-  const getUpdatedResource = (currentResourceIdentifier: ResourceIdentifier) => {
-    const optimisticResourceIdentifier = optimisticResourceIdentifiers
-      .find(
-        p => isResourceIdentifiersEqual(p, currentResourceIdentifier),
-      );
+  const getUpdatedResource = (
+    currentResourceIdentifier: ResourceIdentifier
+  ) => {
+    const optimisticResourceIdentifier = optimisticResourceIdentifiers.find(
+      (p) => isResourceIdentifiersEqual(p, currentResourceIdentifier)
+    );
     if (!optimisticResourceIdentifier) {
-      throw new Error('Could not find matching resource');
+      throw new Error("Could not find matching resource");
     }
-    const resolvedIdentifier = getResolvedResourceIdentifier(optimisticResourceIdentifier, fulfilledAction.offline.resolvedDependencies);
+    const resolvedIdentifier = getResolvedResourceIdentifier(
+      optimisticResourceIdentifier,
+      fulfilledAction.offline.resolvedDependencies
+    );
     return getSingularResource(fulfilledAction, resolvedIdentifier.path);
   };
 
   return dependencyResourceIdentifiers.reduce((acc, identifier) => {
-    return _.setWith(_.clone(acc), identifier.path, getUpdatedResource(identifier), _.clone);
+    return _.setWith(
+      _.clone(acc),
+      identifier.path,
+      getUpdatedResource(identifier),
+      _.clone
+    );
   }, action);
 };
 
-const actionDependsOn = (action: ApiAction, dependentAction: ApiDependentAction) => {
+const actionDependsOn = (
+  action: ApiAction,
+  dependentAction: ApiDependentAction
+) => {
   const resources = getRemoteResources(action);
   const resourceDependencies = getDependencies(dependentAction);
-  return resources.some(r => resourceDependencies.some(d => isResourcesEqual(d, r)));
+  return resources.some((r) =>
+    resourceDependencies.some((d) => isResourcesEqual(d, r))
+  );
 };
 
 const updateDependentActions = (
   internalConfig: InternalConfig,
   optimisticAction: ApiAction,
-  fulfilledAction: ResolvedApiEntityAction,
+  fulfilledAction: ResolvedApiEntityAction
 ) => {
-  const {getState, optimisticStore} = internalConfig;
+  const { getState, optimisticStore } = internalConfig;
   const queue: OfflineAction[] = getState(optimisticStore).queue;
   queue.forEach((action, index) => {
-    if (isDependentAction(action) && actionDependsOn(optimisticAction, action)) {
-      optimisticStore.dispatch(replaceActionInQueue(index, updateDependencies(action, optimisticAction, fulfilledAction)));
+    if (
+      isDependentAction(action) &&
+      actionDependsOn(optimisticAction, action)
+    ) {
+      optimisticStore.dispatch(
+        replaceActionInQueue(
+          index,
+          updateDependencies(action, optimisticAction, fulfilledAction)
+        )
+      );
     }
   });
 };
 
 const removeDependentActions = (
   internalConfig: InternalConfig,
-  optimisticAction: ApiAction,
+  optimisticAction: ApiAction
 ) => {
-  const {getState, optimisticStore} = internalConfig;
+  const { getState, optimisticStore } = internalConfig;
   const queue: OfflineAction[] = getState(optimisticStore).queue;
 
   const actionsToRemove = queue.reduce<OfflineAction[]>((acc, action) => {
-    if (isDependentAction(action) && actionDependsOn(optimisticAction, action)) {
+    if (
+      isDependentAction(action) &&
+      actionDependsOn(optimisticAction, action)
+    ) {
       return acc.concat([action]);
     }
     return acc;
@@ -133,7 +178,7 @@ const removeDependentActions = (
 
   optimisticStore.dispatch(removeActionsInQueue(actionsToRemove));
 
-  actionsToRemove.forEach(action => {
+  actionsToRemove.forEach((action) => {
     if (actionHasSideEffect(action)) {
       // TODO Option for dealing with dependent actions instead of removing?
       // Might want to convert the action to something else/retry
@@ -145,15 +190,20 @@ const removeDependentActions = (
 const handleOptimisticUpdateResolved = (
   internalConfig: InternalConfig,
   action: ApiAction,
-  response: any,
+  response: any
 ) => {
-  const {optimisticStore, config, store} = internalConfig;
+  const { optimisticStore, config, store } = internalConfig;
   optimisticStore.dispatch(markActionAsProcessed(action));
   const fulfilledAction = config.getFulfilledAction(action, response);
   if (fulfilledAction) {
     if (!isResolvedAction(fulfilledAction)) {
-      console.error('Expecting a resolved action or null to be returned by getFulfilledAction, got', fulfilledAction);
-      console.info('A resolved action is an action with a `dependencyPath` attribute for the offline metadata and no other properties');
+      console.error(
+        "Expecting a resolved action or null to be returned by getFulfilledAction, got",
+        fulfilledAction
+      );
+      console.info(
+        "A resolved action is an action with a `dependencyPath` attribute for the offline metadata and no other properties"
+      );
       throw new Error(JSON.stringify(fulfilledAction));
     }
     store.dispatch(fulfilledAction);
@@ -165,9 +215,9 @@ const handleOptimisticUpdateResolved = (
 const handleOptimisticUpdateRollback = (
   internalConfig: InternalConfig,
   action: ApiAction,
-  response: any,
+  response: any
 ) => {
-  const {optimisticStore, config, store} = internalConfig;
+  const { optimisticStore, config, store } = internalConfig;
   optimisticStore.dispatch(markActionAsProcessed(action));
   const rollbackAction = config.getRollbackAction(action, response);
   if (rollbackAction) {
@@ -177,18 +227,25 @@ const handleOptimisticUpdateRollback = (
   rebuildOptimisticStore(internalConfig);
 };
 
-const handlePassThrough = (internalConfig: InternalConfig, action: ApiDependentAction) => {
-  const {optimisticStore, store} = internalConfig;
+const handlePassThrough = (
+  internalConfig: InternalConfig,
+  action: ApiDependentAction
+) => {
+  const { optimisticStore, store } = internalConfig;
   optimisticStore.dispatch(markActionAsProcessed(action));
-  const {offline, ...nextAction} = action;
+  const { offline, ...nextAction } = action;
   store.dispatch(nextAction);
   rebuildOptimisticStore(internalConfig);
 };
 
-const handleApiRequest = (internalConfig: InternalConfig, action: ApiAction) => {
-  const {config} = internalConfig;
+const handleApiRequest = (
+  internalConfig: InternalConfig,
+  action: ApiAction
+) => {
+  const { config } = internalConfig;
 
-  return config.makeApiRequest(action.offline.apiData)
+  return config
+    .makeApiRequest(action.offline.apiData)
     .then((response) => {
       handleOptimisticUpdateResolved(internalConfig, action, response);
       return syncNextPendingAction(internalConfig);
@@ -199,8 +256,10 @@ const handleApiRequest = (internalConfig: InternalConfig, action: ApiAction) => 
     });
 };
 
-const syncNextPendingAction = (internalConfig: InternalConfig): Promise<any> => {
-  const {optimisticStore, getState} = internalConfig;
+const syncNextPendingAction = (
+  internalConfig: InternalConfig
+): Promise<any> => {
+  const { optimisticStore, getState } = internalConfig;
   const state = getState(optimisticStore);
   if (state.queue.length === 0) return Promise.resolve();
   const action = state.queue[0];
@@ -213,30 +272,33 @@ const syncNextPendingAction = (internalConfig: InternalConfig): Promise<any> => 
   }
 
   if (!actionHasSideEffect(action)) {
-    throw new Error(`Unexpected action found in queue: ${JSON.stringify(action)}`);
+    throw new Error(
+      `Unexpected action found in queue: ${JSON.stringify(action)}`
+    );
   }
 
   return handleApiRequest(internalConfig, action);
 };
 
-
-const realStoreMiddleware: Middleware = () => next => action => {
+const realStoreMiddleware: Middleware = () => (next) => (action) => {
   if (isOfflineAction(action)) {
     // Lets us use the same rootReducer for the real store and optimistic store
     // without re-queueing the offline actions
-    const {offline, ...rest} = action;
+    const { offline, ...rest } = action;
     next(rest);
   } else {
     next(action);
   }
 };
 
-const makeRun = (configuredConfig: OptimisticConfig) => (optimisticStore: Store) => {
+const makeRun = (configuredConfig: OptimisticConfig) => (
+  optimisticStore: Store
+) => {
   const setSyncing = (isSyncing: boolean) => {
     optimisticStore.dispatch(setIsSyncing(isSyncing));
   };
 
-  const {getState, store, config} = configuredConfig;
+  const { getState, store, config } = configuredConfig;
 
   const internalConfig = {
     store,
@@ -247,14 +309,14 @@ const makeRun = (configuredConfig: OptimisticConfig) => (optimisticStore: Store)
 
   optimisticStore.subscribe(() => {
     if (
-      getState(optimisticStore).queue.length > 0
-      && !getState(optimisticStore).isSyncing
+      getState(optimisticStore).queue.length > 0 &&
+      !getState(optimisticStore).isSyncing
     ) {
       setSyncing(true);
       syncNextPendingAction(internalConfig);
     } else if (
-      getState(optimisticStore).queue.length === 0
-      && getState(optimisticStore).isSyncing
+      getState(optimisticStore).queue.length === 0 &&
+      getState(optimisticStore).isSyncing
     ) {
       setSyncing(false);
     }
@@ -263,7 +325,10 @@ const makeRun = (configuredConfig: OptimisticConfig) => (optimisticStore: Store)
 
 const configure: Configure = (config) => {
   const getState = makeGetState(config);
-  const store = createStore(config.rootReducer, applyMiddleware(realStoreMiddleware));
+  const store = createStore(
+    config.rootReducer,
+    applyMiddleware(realStoreMiddleware)
+  );
 
   const internalConfig = {
     getState,
@@ -273,14 +338,10 @@ const configure: Configure = (config) => {
 
   const optimisticMiddleware = createOptimisticMiddleware(internalConfig);
 
-  const {useBatching} = config;
+  const { useBatching } = config;
 
   const storeEnhancer = useBatching
-    ? compose(
-      reduxBatch,
-      applyMiddleware(optimisticMiddleware),
-      reduxBatch,
-    )
+    ? compose(reduxBatch, applyMiddleware(optimisticMiddleware), reduxBatch)
     : applyMiddleware(optimisticMiddleware);
 
   const run = makeRun(internalConfig);
@@ -289,7 +350,7 @@ const configure: Configure = (config) => {
     storeEnhancer,
     run,
     store,
-  }
+  };
 };
 
 export default configure;

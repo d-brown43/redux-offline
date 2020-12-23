@@ -74,7 +74,6 @@ it("updates real state if no offline metadata", () => {
 
 it("passes action through if an optimistic action", () => {
   const { optimisticStore, realStore } = createStores();
-
 });
 
 it.todo("passes action through if it is internal state management action");

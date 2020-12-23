@@ -1,11 +1,11 @@
-import React, {useEffect, useState} from "react";
-import {Store} from "redux";
+import React, { useEffect, useState } from "react";
+import { Store } from "redux";
 
 type StoreStateProps = {
-  store: Store
-}
+  store: Store;
+};
 
-const StoreState = ({store}: StoreStateProps) => {
+const StoreState = ({ store }: StoreStateProps) => {
   const [state, setState] = useState();
 
   useEffect(() => {
