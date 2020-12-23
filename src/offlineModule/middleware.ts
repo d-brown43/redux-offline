@@ -11,7 +11,13 @@ export const createOptimisticMiddleware: CreateOptimisticMiddleware = (
   const { useBatching = true } = config.config;
   const next = useBatching
     ? (actions: ArrayAction) => originalNext(actions)
-    : (actions: ArrayAction) => actions.forEach(originalNext);
+    : (actions: ArrayAction) => {
+        if (Array.isArray(actions)) {
+          actions.forEach(originalNext);
+        } else {
+          originalNext(actions);
+        }
+      };
 
   return (action) => {
     const offlineAction =

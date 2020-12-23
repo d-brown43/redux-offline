@@ -1,7 +1,11 @@
 import { createOptimisticMiddleware } from "./middleware";
 import { applyMiddleware, createStore, Store } from "redux";
-import { createRootReducer, REPLACE_OFFLINE_STATE } from "./redux";
-import { OfflineState } from "./types";
+import {
+  createRootReducer,
+  REPLACE_OFFLINE_STATE,
+  setIsSyncing,
+} from "./redux";
+import { ApiAction, OfflineState } from "./types";
 
 const reducer = (state: any = { seenActions: [] }, action: any) => {
   return { seenActions: state.seenActions.concat([action]) };
@@ -14,10 +18,18 @@ const offlineState: OfflineState = {
   queue: [],
 };
 const getLast = (store: Store) =>
-  store.getState().seenactions[store.getState().seenactions.length - 1];
+  store.getState().seenActions[store.getState().seenActions.length - 1];
 
 const createStores = () => {
   const realStore = createStore(rootReducer);
+
+  type PendingAction = {
+    resolve: (value: any) => void;
+  };
+
+  const actions: PendingAction[] = [];
+
+  const resolveActions = actions.forEach((a) => a.resolve(null));
 
   const middleware = createOptimisticMiddleware({
     store: realStore,
@@ -26,7 +38,13 @@ const createStores = () => {
       selector: (state) => state.offline,
       getFulfilledAction: () => null,
       rootReducer: (state) => state,
-      makeApiRequest: () => Promise.resolve(),
+      makeApiRequest: () => {
+        return new Promise((resolve) => {
+          actions.push({
+            resolve,
+          });
+        });
+      },
       useBatching: false,
     },
     getState: () => offlineState,
@@ -37,6 +55,7 @@ const createStores = () => {
   return {
     realStore,
     optimisticStore,
+    resolveActions,
   };
 };
 
@@ -74,6 +93,44 @@ it("updates real state if no offline metadata", () => {
 
 it("passes action through if an optimistic action", () => {
   const { optimisticStore, realStore } = createStores();
+
+  const action: ApiAction = {
+    type: "SOME_API_ACTION",
+    payload: {
+      data: "stuff",
+    },
+    offline: {
+      apiData: "the data",
+      dependencyPaths: {
+        path: "payload.data",
+        type: "DATA_IDENTIFIER",
+      },
+    },
+  };
+
+  optimisticStore.subscribe(() => {
+    expect(getLast(optimisticStore)).toEqual(action);
+  });
+
+  realStore.subscribe(() => {
+    throw new Error("not expecting to receive a real action");
+  });
+
+  optimisticStore.dispatch(action);
 });
 
-it.todo("passes action through if it is internal state management action");
+it("passes action through if it is internal state management action", () => {
+  const { optimisticStore, realStore } = createStores();
+
+  const action = setIsSyncing(true);
+
+  optimisticStore.subscribe(() => {
+    expect(getLast(optimisticStore)).toEqual(action);
+  });
+
+  realStore.subscribe(() => {
+    throw new Error("not expecting to receive a real action");
+  });
+
+  optimisticStore.dispatch(action);
+});
