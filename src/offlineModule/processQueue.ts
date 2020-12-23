@@ -1,15 +1,13 @@
-import {AnyAction, applyMiddleware, compose, createStore, Middleware, Store} from "redux";
+import {applyMiddleware, compose, createStore, Middleware, Store} from "redux";
 import {reduxBatch} from '@manaflair/redux-batch';
 import _ from 'lodash';
 import {
   ApiAction,
   ApiDependentAction,
   ApiResourceAction,
-  ArrayAction,
   Configure,
   OfflineAction,
   OfflineConfig,
-  OfflineState,
   ResolvedApiEntityAction,
   ResolvedDependencies,
   Resource,
@@ -27,60 +25,20 @@ import {
 } from "./utils";
 import {
   markActionAsProcessed,
-  replaceRootState,
-  replaceOfflineState,
   setIsSyncing,
   replaceActionInQueue,
   removeActionsInQueue,
-  isInternalOfflineAction,
 } from "./redux";
 import {validateResourceIdentifiersOnAction} from "./schemaValidation";
+import {GetState, InternalConfig, OptimisticConfig} from "./internalTypes";
+import {rebuildOptimisticStore} from "./manageState";
+import {createOptimisticMiddleware} from "./middleware";
 
-type GetState = (store: Store) => OfflineState;
-
-const createArrayAction = (actions: AnyAction[]): ArrayAction => Object.assign(actions, {type: undefined});
-
-type InternalConfig = {
-  store: Store<any, ArrayAction | AnyAction>,
-  optimisticStore: Store,
-  config: OfflineConfig,
-  getState: GetState,
-}
-
-type OptimisticConfig = Pick<InternalConfig, 'store' | 'config' | 'getState'>;
-
-type OptimisticActionSpy = (config: OptimisticConfig) => Middleware;
 
 const makeGetState = (config: OfflineConfig): GetState => (store: Store) => {
   return config.selector(store.getState());
 };
 
-const getOptimisticStoreRebuildActions = (internalConfig: InternalConfig) => {
-  const {optimisticStore, store, getState} = internalConfig;
-  const offlineState = getState(optimisticStore);
-
-  return createArrayAction([
-    replaceRootState(store.getState()),
-    replaceOfflineState(offlineState),
-    ...offlineState.queue.map(optimisticAction => ({
-      ...optimisticAction,
-      offline: {
-        ...optimisticAction.offline,
-        // Label the action as a passThrough action, i.e. let it pass through
-        // without doing anything special to it, we need to re-apply
-        // the changes it caused to the optimistic state, but don't
-        // want to requeue it, since it will already exist in the queue
-        isPassThrough: true,
-      }
-    })),
-  ]);
-};
-
-const rebuildOptimisticStore = (internalConfig: InternalConfig) => {
-  const {optimisticStore} = internalConfig;
-  const actions = getOptimisticStoreRebuildActions(internalConfig);
-  optimisticStore.dispatch(actions);
-};
 
 const getRemoteResources = (action: ApiAction | ApiResourceAction): Resource[] => {
   return getRemoteResourceIdentifiers(action).map(({path, type}) => ({
@@ -261,17 +219,6 @@ const syncNextPendingAction = (internalConfig: InternalConfig): Promise<any> => 
   return handleApiRequest(internalConfig, action);
 };
 
-export const optimisticActionSpy: OptimisticActionSpy = (config) => optimisticStore => next => action => {
-  const offlineAction = isOfflineAction(action) || isInternalOfflineAction(action);
-
-  if (!offlineAction) {
-    const {store} = config;
-    store.dispatch(action);
-    next(getOptimisticStoreRebuildActions({...config, optimisticStore: optimisticStore as Store}));
-  } else {
-    next(action);
-  }
-};
 
 const realStoreMiddleware: Middleware = () => next => action => {
   if (isOfflineAction(action)) {
@@ -324,15 +271,17 @@ const configure: Configure = (config) => {
     store,
   };
 
-  const optimisticMiddleware = optimisticActionSpy(internalConfig);
+  const optimisticMiddleware = createOptimisticMiddleware(internalConfig);
 
-  // Duplication of reduxBatch is not a bug, we need it duplicated to be able
-  // to dispatch batched actions from optimisticMiddleware
-  const storeEnhancer = compose(
-    reduxBatch,
-    applyMiddleware(optimisticMiddleware),
-    reduxBatch,
-  );
+  const {useBatching} = config;
+
+  const storeEnhancer = useBatching
+    ? compose(
+      reduxBatch,
+      applyMiddleware(optimisticMiddleware),
+      reduxBatch,
+    )
+    : applyMiddleware(optimisticMiddleware);
 
   const run = makeRun(internalConfig);
 

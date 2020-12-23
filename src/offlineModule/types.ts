@@ -68,6 +68,7 @@ export type OfflineConfig = {
   getRollbackAction: GetRollbackAction;
   makeApiRequest: (apiData: any) => Promise<any>;
   rootReducer: Reducer,
+  useBatching?: boolean
 }
 
 type Configured = {

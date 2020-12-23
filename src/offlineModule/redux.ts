@@ -7,14 +7,16 @@ const initialState: OfflineState = {
   isSyncing: false,
 };
 
+const OFFLINE_MODULE_INIT_STATE = 'OFFLINE_MODULE_INIT_STATE';
 const SET_IS_SYNCING = 'SET_IS_SYNCING';
 const MARK_ACTION_AS_PROCESSED = 'MARK_ACTION_AS_PROCESSED';
-const REPLACE_OFFLINE_STATE = 'REPLACE_OFFLINE_STATE';
+export const REPLACE_OFFLINE_STATE = 'REPLACE_OFFLINE_STATE';
 const OFFLINE_QUEUE_REPLACE_ROOT_STATE = 'OFFLINE_QUEUE_REPLACE_ROOT_STATE';
 const REPLACE_ACTION_IN_QUEUE = 'REPLACE_ACTION_IN_QUEUE';
 const REMOVE_ACTIONS_IN_QUEUE = 'REMOVE_ACTIONS_IN_QUEUE';
 
 export const offlineActions = {
+  [OFFLINE_MODULE_INIT_STATE]: true,
   [SET_IS_SYNCING]: true,
   [MARK_ACTION_AS_PROCESSED]: true,
   [REPLACE_OFFLINE_STATE]: true,
@@ -25,11 +27,14 @@ export const offlineActions = {
 
 export const isInternalOfflineAction = (action: AnyAction) => action.type in offlineActions;
 
-export const createRootReducer = (rootReducer: Reducer) => (state: any, action: AnyAction) => {
-  if (action.type === OFFLINE_QUEUE_REPLACE_ROOT_STATE) {
-    return action.payload;
-  }
-  return rootReducer(state, action);
+export const createRootReducer = (rootReducer: Reducer) => {
+  const initialState = rootReducer(undefined, {type: OFFLINE_MODULE_INIT_STATE});
+  return (state: any = initialState, action: AnyAction) => {
+    if (action.type === OFFLINE_QUEUE_REPLACE_ROOT_STATE) {
+      return action.payload;
+    }
+    return rootReducer(state, action);
+  };
 };
 
 export const reducer = (state = initialState, action: AnyAction) => {
