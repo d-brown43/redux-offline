@@ -26,9 +26,7 @@ export type DependsOnMetadata = BaseMetadata & {
   dependsOn: ResourceIdentifier | ResourceIdentifier[]
 }
 
-export type ResolvedDependencies =
-  (ResourceIdentifier | [ResourceIdentifier, ResourceIdentifier])[]
-  | ResourceIdentifier;
+export type ResolvedDependencies = ResourceIdentifier[] | ResourceIdentifier;
 
 export type ResolvedEntityMetadata = BaseMetadata & {
   resolvedDependencies: ResolvedDependencies

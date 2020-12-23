@@ -4,11 +4,16 @@ import _ from 'lodash';
 import {
   ApiAction,
   ApiDependentAction,
-  ApiResourceAction, ArrayAction,
+  ApiResourceAction,
+  ArrayAction,
   Configure,
   OfflineAction,
   OfflineConfig,
-  OfflineState, ResolvedApiEntityAction, ResolvedDependencies, Resource, ResourceIdentifier
+  OfflineState,
+  ResolvedApiEntityAction,
+  ResolvedDependencies,
+  Resource,
+  ResourceIdentifier,
 } from "./types";
 import {
   isDependentAction,
@@ -16,7 +21,9 @@ import {
   isOfflineAction,
   isResolvedAction,
   isResourcesEqual,
-  isResourceIdentifiersEqual, getRemoteResourceIdentifiers, getDependencyResourceIdentifiers
+  isResourceIdentifiersEqual,
+  getRemoteResourceIdentifiers,
+  getDependencyResourceIdentifiers,
 } from "./utils";
 import {
   markActionAsProcessed,
@@ -75,8 +82,6 @@ const rebuildOptimisticStore = (internalConfig: InternalConfig) => {
   optimisticStore.dispatch(actions);
 };
 
-const getSingularResource = (action: object, path: string) => _.get(action, path);
-
 const getRemoteResources = (action: ApiAction | ApiResourceAction): Resource[] => {
   return getRemoteResourceIdentifiers(action).map(({path, type}) => ({
     type,
@@ -84,12 +89,12 @@ const getRemoteResources = (action: ApiAction | ApiResourceAction): Resource[] =
   }));
 };
 
-const getSingularDependency = (action: ApiDependentAction, path: string) => _.get(action, path);
+const getSingularResource = (action: object, path: string) => _.get(action, path);
 
 const getDependencies = (action: ApiDependentAction): Resource[] => {
   return getDependencyResourceIdentifiers(action).map(({type, path}) => ({
     type,
-    value: getSingularDependency(action, path)
+    value: getSingularResource(action, path)
   }));
 };
 
@@ -98,20 +103,19 @@ const getResolvedResourceIdentifier = (optimisticIdentifier: ResourceIdentifier,
     return `Unable to find matching resource path`;
   };
 
-  if (typeof resolvedIdentifiers === 'object' && !Array.isArray(resolvedIdentifiers)) {
+  if (!Array.isArray(resolvedIdentifiers)) {
     if (!isResourceIdentifiersEqual(optimisticIdentifier, resolvedIdentifiers)) {
       throw new Error(getErrorMessage());
     }
     return resolvedIdentifiers;
   }
   const result = resolvedIdentifiers.find((identifierOrPair) => {
-    const comparisonIdentifier = !Array.isArray(identifierOrPair) ? identifierOrPair : identifierOrPair[0];
-    return isResourceIdentifiersEqual(comparisonIdentifier, optimisticIdentifier);
+    return isResourceIdentifiersEqual(identifierOrPair, optimisticIdentifier);
   });
   if (!result) {
     throw new Error(getErrorMessage());
   }
-  return !Array.isArray(result) ? result : result[1];
+  return result;
 };
 
 const updateDependencies = (action: ApiDependentAction, optimisticAction: ApiResourceAction, fulfilledAction: ResolvedApiEntityAction) => {

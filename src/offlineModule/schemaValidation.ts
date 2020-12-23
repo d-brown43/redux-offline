@@ -37,12 +37,7 @@ const validateResolvedIdentifiers = (action: ResolvedApiEntityAction) => {
     checkResourceIdentifier(resolvedDependencies);
   } else {
     resolvedDependencies.forEach(dependency => {
-      if (Array.isArray(dependency)) {
-        // Check the resolved value only
-        checkResourceIdentifier(dependency[1]);
-      } else {
-        checkResourceIdentifier(dependency);
-      }
+      checkResourceIdentifier(dependency);
     });
   }
 };

@@ -120,18 +120,10 @@ export const createTestObject: CreateTestObject = ({title, fails}) => {
 
 const createTestObjectResolved = (testObject: MyTestObject) => {
   const resolvedDependencies: ResolvedDependencies = [
-    [
-      // TODO Do I need the original location?
-      // Not sure I do?
-      {
-        path: 'payload.id',
-        type: ApiResourceTypes.TEST_OBJECT_ID,
-      },
-      {
-        path: 'payload.nested.id',
-        type: ApiResourceTypes.TEST_OBJECT_ID,
-      }
-    ]
+    {
+      path: 'payload.nested.id',
+      type: ApiResourceTypes.TEST_OBJECT_ID,
+    }
   ];
   return ({
     type: CREATE_TEST_OBJECT_RESOLVED,
