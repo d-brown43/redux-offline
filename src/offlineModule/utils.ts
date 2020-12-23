@@ -2,7 +2,6 @@ import { AnyAction } from "redux";
 import {
   ApiAction,
   ApiDependentAction,
-  ApiResourceAction,
   OfflineAction,
   ResolvedApiEntityAction,
   Resource,
@@ -12,9 +11,7 @@ import {
 export const isOfflineAction = (action: AnyAction): action is OfflineAction =>
   "offline" in action;
 
-export const actionHasSideEffect = (
-  action: OfflineAction
-): action is ApiAction => {
+export const isApiAction = (action: OfflineAction): action is ApiAction => {
   return isOfflineAction(action) && "apiData" in action.offline;
 };
 
@@ -29,7 +26,7 @@ export const isResolvedAction = (
 ): action is ResolvedApiEntityAction => {
   return (
     isOfflineAction(action) &&
-    !actionHasSideEffect(action) &&
+    !isApiAction(action) &&
     "resolvedDependencies" in action.offline
   );
 };
@@ -51,23 +48,25 @@ export const isResourcesEqual = (resourceA: Resource, resourceB: Resource) => {
   );
 };
 
-export const getRemoteResourceIdentifiers = (
-  action: ApiAction | ApiResourceAction
-) => {
-  if (
-    typeof action.offline.dependencyPaths === "object" &&
-    !Array.isArray(action.offline.dependencyPaths)
-  ) {
-    return [action.offline.dependencyPaths];
+type GetPathsFromAction = <
+  K extends keyof T["offline"],
+  T extends {
+    offline: Record<K, ResourceIdentifier | ResourceIdentifier[]> & {
+      [k: string]: any;
+    };
   }
-  return action.offline.dependencyPaths;
+>(
+  key: K
+) => (action: T) => ResourceIdentifier[];
+
+const getPathsFromAction: GetPathsFromAction = (key) => (action) => {
+  if (!Array.isArray(action.offline[key])) {
+    return [action.offline[key]];
+  }
+  return action.offline[key];
 };
 
-export const getDependencyResourceIdentifiers = (
-  action: ApiDependentAction
-) => {
-  if (!Array.isArray(action.offline.dependsOn)) {
-    return [action.offline.dependsOn];
-  }
-  return action.offline.dependsOn;
-};
+export const getRemoteResourceIdentifiers = getPathsFromAction(
+  "dependencyPaths"
+);
+export const getDependencyResourceIdentifiers = getPathsFromAction("dependsOn");

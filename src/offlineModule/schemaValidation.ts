@@ -1,7 +1,7 @@
 import { AnyAction } from "redux";
 import _ from "lodash";
 import {
-  actionHasSideEffect,
+  isApiAction,
   getDependencyResourceIdentifiers,
   getRemoteResourceIdentifiers,
   isDependentAction,
@@ -73,5 +73,5 @@ export const validateResourceIdentifiersOnAction = (action: AnyAction) => {
   if (!isOfflineAction(action)) return;
   if (isResolvedAction(action)) return validateResolvedIdentifiers(action);
   if (isDependentAction(action)) return validateDependentAction(action);
-  if (actionHasSideEffect(action)) return validateSideEffectAction(action);
+  if (isApiAction(action)) return validateSideEffectAction(action);
 };

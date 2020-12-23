@@ -1,11 +1,15 @@
 import { isOfflineAction } from "./utils";
 import { isInternalOfflineAction } from "./redux";
-import { Store } from "redux";
-import { CreateOptimisticMiddleware } from "./internalTypes";
+import { AnyAction, Store } from "redux";
+import {
+  ConfigureMiddleware,
+  OptimisticConfig,
+  RealStoreConfig,
+} from "./internalTypes";
 import { getOptimisticStoreRebuildActions } from "./manageState";
 import { ArrayAction } from "./types";
 
-export const createOptimisticMiddleware: CreateOptimisticMiddleware = (
+export const createOptimisticMiddleware: ConfigureMiddleware<OptimisticConfig> = (
   config
 ) => (optimisticStore) => (originalNext) => {
   const { useBatching = true } = config.config;
@@ -33,6 +37,27 @@ export const createOptimisticMiddleware: CreateOptimisticMiddleware = (
         })
       );
     } else {
+      next(action);
+    }
+  };
+};
+
+export const createRealStoreMiddleware: ConfigureMiddleware<RealStoreConfig> = ({
+  config,
+}) => {
+  const { useBatching = true } = config;
+  const actionCheck = useBatching
+    ? (action: AnyAction) =>
+        !Array.isArray(action) && !isInternalOfflineAction(action)
+    : (action: AnyAction) => !isInternalOfflineAction(action);
+
+  return () => (next) => (action) => {
+    if (actionCheck(action)) {
+      // Ignore all internal actions, the only reason we will have
+      // the offline reducer in the real store at all
+      // is to allow the user to re-use the same rootReducer for
+      // both the optimistic store and real store.
+      // The queue is only used by the optimistic store
       next(action);
     }
   };

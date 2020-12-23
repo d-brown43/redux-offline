@@ -67,7 +67,8 @@ export type OfflineState = {
 export type GetFulfilledAction = (
   optimisticAction: ApiAction,
   apiResponse: any
-) => ResolvedApiEntityAction | null;
+) => ResolvedApiEntityAction;
+
 export type GetRollbackAction = (
   optimisticAction: ApiAction,
   apiResponse: any

@@ -1,10 +1,12 @@
 import { GetState, OptimisticConfig } from "./internalTypes";
 import { applyMiddleware, compose, createStore, Store } from "redux";
-import { createRealStoreRootReducer, setIsSyncing } from "./redux";
 import { Configure, OfflineConfig } from "./types";
-import { createOptimisticMiddleware } from "./middleware";
+import {
+  createOptimisticMiddleware,
+  createRealStoreMiddleware,
+} from "./middleware";
 import { reduxBatch } from "@manaflair/redux-batch";
-import syncNextPendingAction from "./processQueue";
+import subscribeToQueue from "./processQueue";
 
 const makeGetState = (config: OfflineConfig): GetState => (store: Store) => {
   return config.selector(store.getState());
@@ -13,38 +15,22 @@ const makeGetState = (config: OfflineConfig): GetState => (store: Store) => {
 const makeRun = (configuredConfig: OptimisticConfig) => (
   optimisticStore: Store
 ) => {
-  const setSyncing = (isSyncing: boolean) => {
-    optimisticStore.dispatch(setIsSyncing(isSyncing));
-  };
-
   const { getState, store, config } = configuredConfig;
 
-  const internalConfig = {
+  subscribeToQueue({
     store,
     optimisticStore,
     config,
     getState,
-  };
-
-  optimisticStore.subscribe(() => {
-    if (
-      getState(optimisticStore).queue.length > 0 &&
-      !getState(optimisticStore).isSyncing
-    ) {
-      setSyncing(true);
-      syncNextPendingAction(internalConfig);
-    } else if (
-      getState(optimisticStore).queue.length === 0 &&
-      getState(optimisticStore).isSyncing
-    ) {
-      setSyncing(false);
-    }
   });
 };
 
 const configure: Configure = (config) => {
   const getState = makeGetState(config);
-  const store = createStore(createRealStoreRootReducer(config.rootReducer));
+  const store = createStore(
+    config.rootReducer,
+    applyMiddleware(createRealStoreMiddleware({ config }))
+  );
 
   const internalConfig = {
     getState,
@@ -54,7 +40,7 @@ const configure: Configure = (config) => {
 
   const optimisticMiddleware = createOptimisticMiddleware(internalConfig);
 
-  const { useBatching } = config;
+  const { useBatching = true } = config;
 
   const storeEnhancer = useBatching
     ? compose(reduxBatch, applyMiddleware(optimisticMiddleware), reduxBatch)

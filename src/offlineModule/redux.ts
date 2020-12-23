@@ -34,21 +34,6 @@ const getInitialState = (rootReducer: Reducer) => {
   });
 };
 
-export const createRealStoreRootReducer = (rootReducer: Reducer) => {
-  const initialState = getInitialState(rootReducer);
-  return (state: any = initialState, action: AnyAction) => {
-    if (isInternalOfflineAction(action)) {
-      // Ignore all internal actions, the only reason we will have
-      // the offline reducer in the real store at all
-      // is to allow the user to re-use the same rootReducer for
-      // both the optimistic store and real store.
-      // The queue is only used by the optimistic store
-      return state;
-    }
-    return rootReducer(state, action);
-  };
-};
-
 export const createRootReducer = (rootReducer: Reducer) => {
   const initialState = getInitialState(rootReducer);
   return (state: any = initialState, action: AnyAction) => {

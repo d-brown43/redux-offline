@@ -15,6 +15,8 @@ export type OptimisticConfig = Pick<
   "store" | "config" | "getState"
 >;
 
-export type CreateOptimisticMiddleware = (
-  config: OptimisticConfig
+export type RealStoreConfig = Pick<InternalConfig, "config">;
+
+export type ConfigureMiddleware<T extends Partial<InternalConfig>> = (
+  config: T
 ) => Middleware;

@@ -11,7 +11,7 @@ import {
 } from "./types";
 import {
   isDependentAction,
-  actionHasSideEffect,
+  isApiAction,
   isResolvedAction,
   isResourcesEqual,
   isResourceIdentifiersEqual,
@@ -22,6 +22,7 @@ import {
   markActionAsProcessed,
   replaceActionInQueue,
   removeActionsInQueue,
+  setIsSyncing,
 } from "./redux";
 import { validateResourceIdentifiersOnAction } from "./schemaValidation";
 import { InternalConfig } from "./internalTypes";
@@ -162,7 +163,7 @@ const removeDependentActions = (
   optimisticStore.dispatch(removeActionsInQueue(actionsToRemove));
 
   actionsToRemove.forEach((action) => {
-    if (actionHasSideEffect(action)) {
+    if (isApiAction(action)) {
       // TODO Option for dealing with dependent actions instead of removing?
       // Might want to convert the action to something else/retry
       removeDependentActions(internalConfig, action);
@@ -254,7 +255,7 @@ const syncNextPendingAction = (
     return syncNextPendingAction(internalConfig);
   }
 
-  if (!actionHasSideEffect(action)) {
+  if (!isApiAction(action)) {
     throw new Error(
       `Unexpected action found in queue: ${JSON.stringify(action)}`
     );
@@ -263,4 +264,27 @@ const syncNextPendingAction = (
   return handleApiRequest(internalConfig, action);
 };
 
-export default syncNextPendingAction;
+const subscribeToStore = (internalConfig: InternalConfig) => {
+  const setSyncing = (isSyncing: boolean) => {
+    optimisticStore.dispatch(setIsSyncing(isSyncing));
+  };
+
+  const { optimisticStore, getState } = internalConfig;
+
+  optimisticStore.subscribe(() => {
+    if (
+      getState(optimisticStore).queue.length > 0 &&
+      !getState(optimisticStore).isSyncing
+    ) {
+      setSyncing(true);
+      syncNextPendingAction(internalConfig);
+    } else if (
+      getState(optimisticStore).queue.length === 0 &&
+      getState(optimisticStore).isSyncing
+    ) {
+      setSyncing(false);
+    }
+  });
+};
+
+export default subscribeToStore;
