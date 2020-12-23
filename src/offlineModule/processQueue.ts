@@ -1,19 +1,9 @@
-import {
-  applyMiddleware,
-  compose,
-  createStore,
-  Middleware,
-  Store,
-} from "redux";
-import { reduxBatch } from "@manaflair/redux-batch";
 import _ from "lodash";
 import {
   ApiAction,
   ApiDependentAction,
   ApiResourceAction,
-  Configure,
   OfflineAction,
-  OfflineConfig,
   ResolvedApiEntityAction,
   ResolvedDependencies,
   Resource,
@@ -22,7 +12,6 @@ import {
 import {
   isDependentAction,
   actionHasSideEffect,
-  isOfflineAction,
   isResolvedAction,
   isResourcesEqual,
   isResourceIdentifiersEqual,
@@ -31,18 +20,12 @@ import {
 } from "./utils";
 import {
   markActionAsProcessed,
-  setIsSyncing,
   replaceActionInQueue,
   removeActionsInQueue,
 } from "./redux";
 import { validateResourceIdentifiersOnAction } from "./schemaValidation";
-import { GetState, InternalConfig, OptimisticConfig } from "./internalTypes";
+import { InternalConfig } from "./internalTypes";
 import { rebuildOptimisticStore } from "./manageState";
-import { createOptimisticMiddleware } from "./middleware";
-
-const makeGetState = (config: OfflineConfig): GetState => (store: Store) => {
-  return config.selector(store.getState());
-};
 
 const getRemoteResources = (
   action: ApiAction | ApiResourceAction
@@ -280,77 +263,4 @@ const syncNextPendingAction = (
   return handleApiRequest(internalConfig, action);
 };
 
-const realStoreMiddleware: Middleware = () => (next) => (action) => {
-  if (isOfflineAction(action)) {
-    // Lets us use the same rootReducer for the real store and optimistic store
-    // without re-queueing the offline actions
-    const { offline, ...rest } = action;
-    next(rest);
-  } else {
-    next(action);
-  }
-};
-
-const makeRun = (configuredConfig: OptimisticConfig) => (
-  optimisticStore: Store
-) => {
-  const setSyncing = (isSyncing: boolean) => {
-    optimisticStore.dispatch(setIsSyncing(isSyncing));
-  };
-
-  const { getState, store, config } = configuredConfig;
-
-  const internalConfig = {
-    store,
-    optimisticStore,
-    config,
-    getState,
-  };
-
-  optimisticStore.subscribe(() => {
-    if (
-      getState(optimisticStore).queue.length > 0 &&
-      !getState(optimisticStore).isSyncing
-    ) {
-      setSyncing(true);
-      syncNextPendingAction(internalConfig);
-    } else if (
-      getState(optimisticStore).queue.length === 0 &&
-      getState(optimisticStore).isSyncing
-    ) {
-      setSyncing(false);
-    }
-  });
-};
-
-const configure: Configure = (config) => {
-  const getState = makeGetState(config);
-  const store = createStore(
-    config.rootReducer,
-    applyMiddleware(realStoreMiddleware)
-  );
-
-  const internalConfig = {
-    getState,
-    config,
-    store,
-  };
-
-  const optimisticMiddleware = createOptimisticMiddleware(internalConfig);
-
-  const { useBatching } = config;
-
-  const storeEnhancer = useBatching
-    ? compose(reduxBatch, applyMiddleware(optimisticMiddleware), reduxBatch)
-    : applyMiddleware(optimisticMiddleware);
-
-  const run = makeRun(internalConfig);
-
-  return {
-    storeEnhancer,
-    run,
-    store,
-  };
-};
-
-export default configure;
+export default syncNextPendingAction;

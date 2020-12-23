@@ -1,4 +1,4 @@
-import { AnyAction, createStore, Store } from "redux";
+import { createStore, Store } from "redux";
 import { composeWithDevTools } from "redux-devtools-extension";
 import rootReducer, {
   getOffline,
@@ -9,7 +9,7 @@ import rootReducer, {
 import configure, { createRootReducer } from "../offlineModule";
 import api from "./api";
 
-export type StoreType = Store<State, AnyAction>;
+export type StoreType = Store<State>;
 
 const configureStore = () => {
   const { run, storeEnhancer, store } = configure({

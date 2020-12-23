@@ -5,4 +5,4 @@ export * from "./redux";
 export { default as offlineReducer } from "./redux";
 export * from "./processQueue";
 export { default as TruthProvider } from "./optimisticStoreContext";
-export { default } from "./processQueue";
+export { default } from "./configure";
