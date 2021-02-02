@@ -1,85 +1,117 @@
-import { Action, AnyAction, Reducer, Store, StoreEnhancer } from "redux";
+import { Action, AnyAction, Reducer, Store, StoreEnhancer } from 'redux';
 
 type BaseMetadata = {
   isPassThrough?: boolean;
 };
 
-export type ResourceIdentifier<T extends string = any> = {
+export type UniqueIdentifier = any;
+
+export type ResourceIdentifier = {
   path: string;
-  type: T;
+  uniqueIdentifier: UniqueIdentifier;
 };
 
-export type Resource<T = any, V = any> = {
-  type: T;
+export type Resource<V = any> = {
+  uniqueIdentifier: UniqueIdentifier;
   value: V;
 };
 
-export type ApiResourceMetadata = BaseMetadata & {
-  dependencyPaths: ResourceIdentifier | ResourceIdentifier[];
+export type ResourcePaths = ResourceIdentifier | ResourceIdentifier[];
+
+export type ApiActionMetadata = BaseMetadata & {
+  apiData: any;
+  dependencyPaths: ResourcePaths;
 };
 
-export type ApiEntityMetadata = BaseMetadata &
-  ApiResourceMetadata & {
-    apiData: any;
-  };
-
-export type DependsOnMetadata = BaseMetadata & {
-  dependsOn: ResourceIdentifier | ResourceIdentifier[];
+export type DependentActionMetadata = BaseMetadata & {
+  dependsOn: ResourcePaths;
 };
 
-export type ResolvedDependencies = ResourceIdentifier[] | ResourceIdentifier;
+export type DependentApiActionMetadata = ApiActionMetadata &
+  DependentActionMetadata;
 
-export type ResolvedEntityMetadata = BaseMetadata & {
-  resolvedDependencies: ResolvedDependencies;
+export type ResolvedActionMetadata = BaseMetadata & {
+  resolvedDependencies: ResourcePaths;
 };
 
 export type OfflineMetadata =
-  | DependsOnMetadata
-  | ApiEntityMetadata
-  | ApiResourceMetadata
-  | ResolvedEntityMetadata;
+  | DependentActionMetadata
+  | ApiActionMetadata
+  | ResolvedActionMetadata;
 
 export interface OfflineAction extends AnyAction {
   offline: OfflineMetadata;
 }
 
-export interface ApiResourceAction extends OfflineAction {
-  offline: ApiResourceMetadata;
+export interface ResolvedAction extends OfflineAction {
+  offline: ResolvedActionMetadata;
 }
 
-export interface ResolvedApiEntityAction extends OfflineAction {
-  offline: ResolvedEntityMetadata;
-}
+export type OptionalResolvedApiAction = AnyAction & {
+  offline?: ResolvedActionMetadata;
+};
 
 export interface ApiAction extends OfflineAction {
-  offline: ApiEntityMetadata;
+  offline: ApiActionMetadata;
 }
 
-export interface ApiDependentAction extends OfflineAction {
-  offline: DependsOnMetadata;
+export interface DependentAction extends OfflineAction {
+  offline: DependentActionMetadata;
 }
+
+export interface DependentApiAction extends OfflineAction {
+  offline: DependentApiActionMetadata;
+}
+
+export type OfflineQueue = OfflineAction[];
 
 export type OfflineState = {
-  queue: OfflineAction[];
+  queue: OfflineQueue;
   isSyncing: boolean;
 };
 
-export type GetFulfilledAction = (
-  optimisticAction: ApiAction,
+export type GetResolvedAction<T extends ApiAction = ApiAction> = (
+  optimisticAction: T,
   apiResponse: any
-) => ResolvedApiEntityAction;
+) => OptionalResolvedApiAction | null;
 
-export type GetRollbackAction = (
+export type GetRejectionAction = (
   optimisticAction: ApiAction,
   apiResponse: any
 ) => AnyAction | null;
 
 export type OfflineConfig = {
+  // The selector to retrieve the offline state - depends where
+  // you place the "offlineReducer" in your app
   selector: (state: any) => OfflineState;
-  getFulfilledAction: GetFulfilledAction;
-  getRollbackAction: GetRollbackAction;
+  // Function to get a single action that describes how
+  // the original optimistic action gets mapped back to state, with any updated
+  // data from your API.
+  // TODO If you do not map to a ResolvedAction, the original optimistic
+  // action will be used and no data will be updated in your optimistic store.
+  getFulfilledAction: GetResolvedAction;
+  // Optional utility function to map to an action when the request fails.
+  // If an action is returned, this will be dispatched after the optimistic store
+  // has been rebuilt. By default the ApiAction and any dependent actions
+  // will be removed from the queue, meaning their optimistic changes get undone.
+  // You may want to retry/perform other
+  // changes based on the error such as displaying an error message
+  getRollbackAction?: GetRejectionAction;
+  // Function to make your api request based on any given api data
+  // you provide to your ApiActions
   makeApiRequest: (apiData: any) => Promise<any>;
+  // The root reducer you provide to your own store
+  // Internally a second store containing the latest "source of truth"
+  // (all resolved actions + your regular actions) is used for maintaining
+  // the optimistic store
   rootReducer: Reducer;
+  // Internally batching is enabled by default and added as a middleware
+  // to your store, allowing arrays of actions to be dispatched. This is
+  // to allow multiple actions to be replayed on your optimistic store
+  // when it gets rebuilt, without notifying any store subscribers
+  // until all the changes have been applied to state through your reducers.
+  // Setting `useBatching` to false will disable batching, meaning your
+  // subscribers will be notified of all updates as your store gets rebuilt
   useBatching?: boolean;
 };
 
@@ -97,3 +129,8 @@ export type Configure = (config: OfflineConfig) => Configured;
 // So instead make an interface that has an undefined "type" field assigned to
 // the array of actions, and use a utility to create the array with type field
 export interface ArrayAction extends Array<AnyAction>, Action<undefined> {}
+
+export type ResolvedActionChanges = {
+  original: OfflineAction;
+  updated: OfflineAction;
+}[];

@@ -1,18 +1,21 @@
-import React, { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import React, { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
+  createArrayTestObjects,
   createTestObject,
+  MyTestObject,
   nonOptimisticToggle,
   setCurrentObject,
-} from "../store/test";
-import { State } from "../store/rootReducer";
+} from '../store/test';
+import { State } from '../store/rootReducer';
+import { getTempId } from '../utils';
 
 const TestControls = () => {
   const dispatch = useDispatch();
   const isOn = useSelector<State>((state) => state.test.toggleIsOn);
-  const latestEntityId = useSelector<State, string | null>((state) =>
+  const latestEntity = useSelector<State, MyTestObject | null>((state) =>
     state.test.entities.length > 0
-      ? state.test.entities[state.test.entities.length - 1].id
+      ? state.test.entities[state.test.entities.length - 1]
       : null
   );
   const [testObjectCount, setTestObjectCount] = useState(0);
@@ -39,7 +42,17 @@ const TestControls = () => {
   };
 
   const currentObject = () => {
-    dispatch(setCurrentObject(latestEntityId));
+    dispatch(setCurrentObject(latestEntity));
+  };
+
+  const createArrayObjects = () => {
+    const objects: MyTestObject[] = Array.from(Array(3)).map((_, i) => ({
+      id: getTempId(),
+      title: `test object ${i + 1}`,
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    }));
+    dispatch(createArrayTestObjects(objects));
   };
 
   return (
@@ -55,6 +68,9 @@ const TestControls = () => {
       </button>
       <button type="button" onClick={currentObject}>
         Set Current
+      </button>
+      <button type="button" onClick={createArrayObjects}>
+        Create array objects
       </button>
     </div>
   );

@@ -1,6 +1,9 @@
-import { getMockRealId } from "../utils";
+import { getMockRealId } from '../utils';
+import { MyTestObject } from './test';
 
-export const API_CREATE_TEST_OBJECT = "API_CREATE_TEST_OBJECT";
+export const API_CREATE_TEST_OBJECT = 'API_CREATE_TEST_OBJECT';
+export const API_CREATE_MULTIPLE_TEST_OBJECTS =
+  'API_CREATE_MULTIPLE_TEST_OBJECTS';
 
 type ApiData = {
   type: string;
@@ -15,20 +18,29 @@ const fakeApi = (apiData: ApiData) => {
       id: getMockRealId(),
     };
   }
+  if (apiData.type === API_CREATE_MULTIPLE_TEST_OBJECTS) {
+    console.log('apiData', apiData);
+    return apiData.data.map((testObject: MyTestObject) => ({
+      ...testObject,
+      title: `${testObject.title} - UPDATED`,
+      id: getMockRealId(),
+      originalId: testObject.id,
+    }));
+  }
   return null;
 };
 
 const api = (apiData: ApiData) => {
   return new Promise((resolve, reject) => {
-    console.log("making fake request with data", apiData);
+    console.log('making fake request with data', apiData);
     window.setTimeout(() => {
       const fakeResponse = fakeApi(apiData);
       if (apiData.fails) {
-        console.info("REJECT response for request data", apiData);
-        reject("fake error");
+        console.info('REJECT response for request data', apiData);
+        reject('fake error');
       } else {
         console.info(
-          "RESOLVE response for request data",
+          'RESOLVE response for request data',
           apiData,
           fakeResponse
         );

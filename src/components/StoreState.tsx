@@ -1,19 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { Store } from "redux";
+import React from 'react';
+import { useSelector } from 'react-redux';
 
-type StoreStateProps = {
-  store: Store;
-};
-
-const StoreState = ({ store }: StoreStateProps) => {
-  const [state, setState] = useState();
-
-  useEffect(() => {
-    setState(store.getState());
-    return store.subscribe(() => {
-      setState(store.getState());
-    });
-  }, [store]);
+const StoreState = () => {
+  const state = useSelector((state) => state);
 
   return (
     <div>

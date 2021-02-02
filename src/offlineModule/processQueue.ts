@@ -1,174 +1,40 @@
-import _ from "lodash";
 import {
   ApiAction,
-  ApiDependentAction,
-  ApiResourceAction,
+  DependentAction,
+  DependentApiAction,
   OfflineAction,
-  ResolvedApiEntityAction,
-  ResolvedDependencies,
-  Resource,
-  ResourceIdentifier,
-} from "./types";
+} from './types';
 import {
   isDependentAction,
   isApiAction,
-  isResolvedAction,
-  isResourcesEqual,
-  isResourceIdentifiersEqual,
-  getRemoteResourceIdentifiers,
-  getDependencyResourceIdentifiers,
-} from "./utils";
+  ensureResolvedPaths,
+  ensureResolvedAction,
+} from './utils';
 import {
-  markActionAsProcessed,
-  replaceActionInQueue,
+  replaceActionsInQueue,
   removeActionsInQueue,
-  setIsSyncing,
-} from "./redux";
-import { validateResourceIdentifiersOnAction } from "./schemaValidation";
-import { InternalConfig } from "./internalTypes";
-import { rebuildOptimisticStore } from "./manageState";
+  setIsSyncing, getQueue, getIsSyncing,
+} from './redux';
+import { InternalConfig } from './internalTypes';
+import { createArrayAction, rebuildOptimisticStore } from './manageState';
+import { verifyResolvedAction } from './validateActions';
+import {
+  getExpandedDependentActions,
+  getUpdatedDependentActions,
+} from './expandActions';
 
-const getRemoteResources = (
-  action: ApiAction | ApiResourceAction
-): Resource[] => {
-  return getRemoteResourceIdentifiers(action).map(({ path, type }) => ({
-    type,
-    value: getSingularResource(action, path),
-  }));
-};
-
-const getSingularResource = (action: object, path: string) =>
-  _.get(action, path);
-
-const getDependencies = (action: ApiDependentAction): Resource[] => {
-  return getDependencyResourceIdentifiers(action).map(({ type, path }) => ({
-    type,
-    value: getSingularResource(action, path),
-  }));
-};
-
-const getResolvedResourceIdentifier = (
-  optimisticIdentifier: ResourceIdentifier,
-  resolvedIdentifiers: ResolvedDependencies
+const getRemoveDependentActions = (
+  internalConfig: InternalConfig,
+  optimisticAction: ApiAction | DependentApiAction
 ) => {
-  const getErrorMessage = () => {
-    return `Unable to find matching resource path`;
-  };
-
-  if (!Array.isArray(resolvedIdentifiers)) {
-    if (
-      !isResourceIdentifiersEqual(optimisticIdentifier, resolvedIdentifiers)
-    ) {
-      throw new Error(getErrorMessage());
-    }
-    return resolvedIdentifiers;
-  }
-  const result = resolvedIdentifiers.find((identifierOrPair) => {
-    return isResourceIdentifiersEqual(identifierOrPair, optimisticIdentifier);
-  });
-  if (!result) {
-    throw new Error(getErrorMessage());
-  }
-  return result;
-};
-
-const updateDependencies = (
-  action: ApiDependentAction,
-  optimisticAction: ApiResourceAction,
-  fulfilledAction: ResolvedApiEntityAction
-) => {
-  const dependencyResourceIdentifiers = getDependencyResourceIdentifiers(
-    action
-  );
-  const optimisticResourceIdentifiers = getRemoteResourceIdentifiers(
+  const { getState, optimisticStore } = internalConfig;
+  const queue: OfflineAction[] = getState(optimisticStore).queue;
+  const dependentActions = getExpandedDependentActions(
+    queue,
+    internalConfig,
     optimisticAction
   );
-
-  const getUpdatedResource = (
-    currentResourceIdentifier: ResourceIdentifier
-  ) => {
-    const optimisticResourceIdentifier = optimisticResourceIdentifiers.find(
-      (p) => isResourceIdentifiersEqual(p, currentResourceIdentifier)
-    );
-    if (!optimisticResourceIdentifier) {
-      throw new Error("Could not find matching resource");
-    }
-    const resolvedIdentifier = getResolvedResourceIdentifier(
-      optimisticResourceIdentifier,
-      fulfilledAction.offline.resolvedDependencies
-    );
-    return getSingularResource(fulfilledAction, resolvedIdentifier.path);
-  };
-
-  return dependencyResourceIdentifiers.reduce((acc, identifier) => {
-    return _.setWith(
-      _.clone(acc),
-      identifier.path,
-      getUpdatedResource(identifier),
-      _.clone
-    );
-  }, action);
-};
-
-const actionDependsOn = (
-  action: ApiAction,
-  dependentAction: ApiDependentAction
-) => {
-  const resources = getRemoteResources(action);
-  const resourceDependencies = getDependencies(dependentAction);
-  return resources.some((r) =>
-    resourceDependencies.some((d) => isResourcesEqual(d, r))
-  );
-};
-
-const updateDependentActions = (
-  internalConfig: InternalConfig,
-  optimisticAction: ApiAction,
-  fulfilledAction: ResolvedApiEntityAction
-) => {
-  const { getState, optimisticStore } = internalConfig;
-  const queue: OfflineAction[] = getState(optimisticStore).queue;
-  queue.forEach((action, index) => {
-    if (
-      isDependentAction(action) &&
-      actionDependsOn(optimisticAction, action)
-    ) {
-      optimisticStore.dispatch(
-        replaceActionInQueue(
-          index,
-          updateDependencies(action, optimisticAction, fulfilledAction)
-        )
-      );
-    }
-  });
-};
-
-const removeDependentActions = (
-  internalConfig: InternalConfig,
-  optimisticAction: ApiAction
-) => {
-  const { getState, optimisticStore } = internalConfig;
-  const queue: OfflineAction[] = getState(optimisticStore).queue;
-
-  const actionsToRemove = queue.reduce<OfflineAction[]>((acc, action) => {
-    if (
-      isDependentAction(action) &&
-      actionDependsOn(optimisticAction, action)
-    ) {
-      return acc.concat([action]);
-    }
-    return acc;
-  }, []);
-
-  optimisticStore.dispatch(removeActionsInQueue(actionsToRemove));
-
-  actionsToRemove.forEach((action) => {
-    if (isApiAction(action)) {
-      // TODO Option for dealing with dependent actions instead of removing?
-      // Might want to convert the action to something else/retry
-      removeDependentActions(internalConfig, action);
-    }
-  });
+  return removeActionsInQueue(dependentActions);
 };
 
 const handleOptimisticUpdateResolved = (
@@ -177,23 +43,28 @@ const handleOptimisticUpdateResolved = (
   response: any
 ) => {
   const { optimisticStore, config, store } = internalConfig;
-  optimisticStore.dispatch(markActionAsProcessed(action));
+
   const fulfilledAction = config.getFulfilledAction(action, response);
-  if (fulfilledAction) {
-    if (!isResolvedAction(fulfilledAction)) {
-      console.error(
-        "Expecting a resolved action or null to be returned by getFulfilledAction, got",
-        fulfilledAction
-      );
-      console.info(
-        "A resolved action is an action with a `dependencyPath` attribute for the offline metadata and no other properties"
-      );
-      throw new Error(JSON.stringify(fulfilledAction));
-    }
-    store.dispatch(fulfilledAction);
-    updateDependentActions(internalConfig, action, fulfilledAction);
-    rebuildOptimisticStore(internalConfig);
+  const nonNullFulfilledAction = ensureResolvedAction(action, fulfilledAction);
+  const withMetadata = ensureResolvedPaths(action, nonNullFulfilledAction);
+
+  if (process.env.NODE_ENV === 'development') {
+    verifyResolvedAction(action, withMetadata);
   }
+
+  const updateActions = replaceActionsInQueue(
+    getUpdatedDependentActions(internalConfig, action, withMetadata)
+  );
+
+  // TODO Allow dispatching the fulfilled action to the optimistic store?
+  // Would allow dispatching new API requests based on this result
+  // Think should not allow this, and they should use something else to respond to
+  // changes themselves after resolving
+  store.dispatch(withMetadata);
+  optimisticStore.dispatch(
+    createArrayAction([removeActionsInQueue([action]), updateActions])
+  );
+  rebuildOptimisticStore(internalConfig);
 };
 
 const handleOptimisticUpdateRollback = (
@@ -202,21 +73,25 @@ const handleOptimisticUpdateRollback = (
   response: any
 ) => {
   const { optimisticStore, config, store } = internalConfig;
-  optimisticStore.dispatch(markActionAsProcessed(action));
-  const rollbackAction = config.getRollbackAction(action, response);
-  if (rollbackAction) {
-    store.dispatch(rollbackAction);
+
+  optimisticStore.dispatch(getRemoveDependentActions(internalConfig, action));
+
+  if (config.getRollbackAction) {
+    const rollbackAction = config.getRollbackAction(action, response);
+    if (rollbackAction) {
+      store.dispatch(rollbackAction);
+    }
   }
-  removeDependentActions(internalConfig, action);
+
   rebuildOptimisticStore(internalConfig);
 };
 
 const handlePassThrough = (
   internalConfig: InternalConfig,
-  action: ApiDependentAction
+  action: DependentAction
 ) => {
   const { optimisticStore, store } = internalConfig;
-  optimisticStore.dispatch(markActionAsProcessed(action));
+  optimisticStore.dispatch(removeActionsInQueue([action]));
   const { offline, ...nextAction } = action;
   store.dispatch(nextAction);
   rebuildOptimisticStore(internalConfig);
@@ -228,15 +103,20 @@ const handleApiRequest = (
 ) => {
   const { config } = internalConfig;
 
+  let handled = false;
   return config
     .makeApiRequest(action.offline.apiData)
-    .then((response) => {
-      handleOptimisticUpdateResolved(internalConfig, action, response);
-      return syncNextPendingAction(internalConfig);
-    })
     .catch((error) => {
       handleOptimisticUpdateRollback(internalConfig, action, error);
+      handled = true;
       return syncNextPendingAction(internalConfig);
+    })
+    .then((response) => {
+      if (!handled) {
+        handleOptimisticUpdateResolved(internalConfig, action, response);
+        return syncNextPendingAction(internalConfig);
+      }
+      return response;
     });
 };
 
@@ -247,8 +127,6 @@ const syncNextPendingAction = (
   const state = getState(optimisticStore);
   if (state.queue.length === 0) return Promise.resolve();
   const action = state.queue[0];
-
-  validateResourceIdentifiersOnAction(action);
 
   if (isDependentAction(action)) {
     handlePassThrough(internalConfig, action);
@@ -273,14 +151,14 @@ const subscribeToStore = (internalConfig: InternalConfig) => {
 
   optimisticStore.subscribe(() => {
     if (
-      getState(optimisticStore).queue.length > 0 &&
-      !getState(optimisticStore).isSyncing
+      getQueue(getState(optimisticStore)).length > 0 &&
+      !getIsSyncing(getState(optimisticStore))
     ) {
       setSyncing(true);
       syncNextPendingAction(internalConfig);
     } else if (
-      getState(optimisticStore).queue.length === 0 &&
-      getState(optimisticStore).isSyncing
+      getQueue(getState(optimisticStore)).length === 0 &&
+      getIsSyncing(getState(optimisticStore))
     ) {
       setSyncing(false);
     }

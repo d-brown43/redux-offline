@@ -1,5 +1,5 @@
-import { AnyAction, Middleware, Store } from "redux";
-import { ArrayAction, OfflineConfig, OfflineState } from "./types";
+import { AnyAction, Middleware, Store } from 'redux';
+import { ArrayAction, OfflineConfig, OfflineState } from './types';
 
 export type GetState = (store: Store) => OfflineState;
 
@@ -10,12 +10,12 @@ export type InternalConfig = {
   getState: GetState;
 };
 
-export type OptimisticConfig = Pick<
+export type OptimisticConfig = Omit<
   InternalConfig,
-  "store" | "config" | "getState"
+  'optimisticStore'
 >;
 
-export type RealStoreConfig = Pick<InternalConfig, "config">;
+export type RealStoreConfig = Pick<InternalConfig, 'config'>;
 
 export type ConfigureMiddleware<T extends Partial<InternalConfig>> = (
   config: T

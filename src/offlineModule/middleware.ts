@@ -1,13 +1,13 @@
-import { isOfflineAction } from "./utils";
-import { isInternalOfflineAction } from "./redux";
-import { AnyAction, Store } from "redux";
+import { isOfflineAction, makePassThrough } from './utils';
+import { isInternalOfflineAction } from './redux';
+import { AnyAction, Store } from 'redux';
 import {
   ConfigureMiddleware,
   OptimisticConfig,
   RealStoreConfig,
-} from "./internalTypes";
-import { getOptimisticStoreRebuildActions } from "./manageState";
-import { ArrayAction } from "./types";
+} from './internalTypes';
+import { getOptimisticStoreRebuildActions } from './manageState';
+import { ArrayAction } from './types';
 
 export const createOptimisticMiddleware: ConfigureMiddleware<OptimisticConfig> = (
   config
@@ -53,12 +53,16 @@ export const createRealStoreMiddleware: ConfigureMiddleware<RealStoreConfig> = (
 
   return () => (next) => (action) => {
     if (actionCheck(action)) {
-      // Ignore all internal actions, the only reason we will have
-      // the offline reducer in the real store at all
-      // is to allow the user to re-use the same rootReducer for
-      // both the optimistic store and real store.
-      // The queue is only used by the optimistic store
-      next(action);
+      if (isOfflineAction(action)) {
+        next(makePassThrough(action));
+      } else {
+        // Ignore all internal actions, the only reason we will have
+        // the offline reducer in the real store at all
+        // is to allow the user to re-use the same rootReducer for
+        // both the optimistic store and real store.
+        // The queue is only used by the optimistic store
+        next(action);
+      }
     }
   };
 };

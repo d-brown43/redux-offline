@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
-import configureStore, { StoreType } from "../store";
-import { Provider } from "react-redux";
-import TestControls from "./TestControls";
-import { TruthProvider } from "../offlineModule";
-import AppState from "./AppState";
+import React, { useEffect, useState } from 'react';
+import configureStore, { StoreType } from '../store';
+import { Provider } from 'react-redux';
+import TestControls from './TestControls';
+import { TruthProvider } from '../offlineModule';
+import AppState from './AppState';
 
 const TestHarness = () => {
   const [stores, setStores] = useState<{
@@ -25,9 +25,9 @@ const TestHarness = () => {
         <TestControls />
         <div
           style={{
-            display: "flex",
-            flexDirection: "row",
-            marginTop: "32px",
+            display: 'flex',
+            flexDirection: 'row',
+            marginTop: '32px',
           }}
         >
           <div style={{ flexGrow: 1 }}>
@@ -36,7 +36,7 @@ const TestHarness = () => {
               <AppState />
             </Provider>
           </div>
-          <div style={{ marginLeft: "32px", flexGrow: 1 }}>
+          <div style={{ marginLeft: '32px', flexGrow: 1 }}>
             <h2>Real State</h2>
             <Provider store={stores.store}>
               <AppState />

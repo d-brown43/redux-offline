@@ -1,5 +1,5 @@
-import React, { createContext } from "react";
-import { Store } from "redux";
+import React, { createContext } from 'react';
+import { Store } from 'redux';
 
 const OptimisticStoreContext = createContext<Store | null>(null);
 

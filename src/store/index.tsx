@@ -1,13 +1,13 @@
-import { createStore, Store } from "redux";
-import { composeWithDevTools } from "redux-devtools-extension";
+import { createStore, Store } from 'redux';
+import { composeWithDevTools } from 'redux-devtools-extension';
 import rootReducer, {
   getOffline,
   State,
   mergedGetFulfilledAction,
   mergedGetRollbackAction,
-} from "./rootReducer";
-import configure, { createRootReducer } from "../offlineModule";
-import api from "./api";
+} from './rootReducer';
+import configure, { createRootReducer } from '../offlineModule';
+import api from './api';
 
 export type StoreType = Store<State>;
 

@@ -1,9 +1,10 @@
-import { replaceOfflineState, replaceRootState } from "./redux";
-import { InternalConfig } from "./internalTypes";
-import { AnyAction } from "redux";
-import { ArrayAction } from "./types";
+import { replaceOfflineState, replaceRootState } from './redux';
+import { InternalConfig } from './internalTypes';
+import { AnyAction } from 'redux';
+import { ArrayAction } from './types';
+import { makePassThrough } from './utils';
 
-const createArrayAction = (actions: AnyAction[]): ArrayAction =>
+export const createArrayAction = (actions: AnyAction[]): ArrayAction =>
   Object.assign(actions, { type: undefined });
 
 export const getOptimisticStoreRebuildActions = (
@@ -15,17 +16,7 @@ export const getOptimisticStoreRebuildActions = (
   return createArrayAction([
     replaceRootState(store.getState()),
     replaceOfflineState(offlineState),
-    ...offlineState.queue.map((optimisticAction) => ({
-      ...optimisticAction,
-      offline: {
-        ...optimisticAction.offline,
-        // Label the action as a passThrough action, i.e. let it pass through
-        // without doing anything special to it, we need to re-apply
-        // the changes it caused to the optimistic state, but don't
-        // want to requeue it, since it will already exist in the queue
-        isPassThrough: true,
-      },
-    })),
+    ...offlineState.queue.map(makePassThrough),
   ]);
 };
 

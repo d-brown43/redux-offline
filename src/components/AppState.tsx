@@ -1,7 +1,8 @@
-import React from "react";
-import { State } from "../store/rootReducer";
-import { useSelector } from "react-redux";
-import { MyTestObject } from "../store/test";
+import React from 'react';
+import { State } from '../store/rootReducer';
+import { useSelector } from 'react-redux';
+import { MyTestObject } from '../store/test';
+import StoreState from './StoreState';
 
 const AppState = () => {
   const entities = useSelector<State, MyTestObject[]>(
@@ -26,9 +27,9 @@ const AppState = () => {
     <div>
       <div>
         <label>Other state</label>
-        <div>Toggled: {isToggled ? "true" : "false"}</div>
+        <div>Toggled: {isToggled ? 'true' : 'false'}</div>
       </div>
-      <div style={{ marginTop: "32px" }}>
+      <div style={{ marginTop: '32px' }}>
         <label>Selected: {selectedObject?.title}</label>
         <ul>
           {entities.map((entity) => (
@@ -38,12 +39,15 @@ const AppState = () => {
           ))}
         </ul>
       </div>
-      <div style={{ marginTop: "32px" }}>
+      <div style={{ marginTop: '32px' }}>
         {errors.map((error, i) => (
-          <div key={i} style={{ marginTop: "8px" }}>
+          <div key={i} style={{ marginTop: '8px' }}>
             {error}
           </div>
         ))}
+      </div>
+      <div style={{ marginTop: '32px' }}>
+        <StoreState />
       </div>
     </div>
   );

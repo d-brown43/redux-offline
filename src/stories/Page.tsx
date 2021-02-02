@@ -1,7 +1,7 @@
-import React from "react";
+import React from 'react';
 
-import { Header } from "./Header";
-import "./page.css";
+import { Header } from './Header';
+import './page.css';
 
 export interface PageProps {
   user?: {};
@@ -27,14 +27,14 @@ export const Page: React.FC<PageProps> = ({
     <section>
       <h2>Pages in Storybook</h2>
       <p>
-        We recommend building UIs with a{" "}
+        We recommend building UIs with a{' '}
         <a
           href="https://componentdriven.org"
           target="_blank"
           rel="noopener noreferrer"
         >
           <strong>component-driven</strong>
-        </a>{" "}
+        </a>{' '}
         process starting with atomic components and ending with pages.
       </p>
       <p>
@@ -53,7 +53,7 @@ export const Page: React.FC<PageProps> = ({
         </li>
       </ul>
       <p>
-        Get a guided tutorial on component-driven development at{" "}
+        Get a guided tutorial on component-driven development at{' '}
         <a
           href="https://www.learnstorybook.com"
           target="_blank"
@@ -61,7 +61,7 @@ export const Page: React.FC<PageProps> = ({
         >
           Learn Storybook
         </a>
-        . Read more in the{" "}
+        . Read more in the{' '}
         <a
           href="https://storybook.js.org/docs"
           target="_blank"
@@ -72,7 +72,7 @@ export const Page: React.FC<PageProps> = ({
         .
       </p>
       <div className="tip-wrapper">
-        <span className="tip">Tip</span> Adjust the width of the canvas with the{" "}
+        <span className="tip">Tip</span> Adjust the width of the canvas with the{' '}
         <svg
           width="10"
           height="10"

@@ -1,11 +1,11 @@
-import { createOptimisticMiddleware } from "./middleware";
-import { applyMiddleware, createStore, Store } from "redux";
+import { createOptimisticMiddleware } from './middleware';
+import { applyMiddleware, createStore, Store } from 'redux';
 import {
   createRootReducer,
   REPLACE_OFFLINE_STATE,
   setIsSyncing,
-} from "./redux";
-import { ApiAction, OfflineState } from "./types";
+} from './redux';
+import { ApiAction, OfflineState } from './types';
 
 const reducer = (state: any = { seenActions: [] }, action: any) => {
   return { seenActions: state.seenActions.concat([action]) };
@@ -59,13 +59,13 @@ const createStores = () => {
   };
 };
 
-it("updates real state if no offline metadata", () => {
+it('updates real state if no offline metadata', () => {
   const { optimisticStore, realStore } = createStores();
 
   const action = {
-    type: "some_app_action",
+    type: 'some_app_action',
     payload: {
-      field: "data",
+      field: 'data',
     },
   };
 
@@ -91,19 +91,19 @@ it("updates real state if no offline metadata", () => {
   return promise;
 });
 
-it("passes action through if an optimistic action", () => {
+it('passes action through if an optimistic action', () => {
   const { optimisticStore, realStore } = createStores();
 
   const action: ApiAction = {
-    type: "SOME_API_ACTION",
+    type: 'SOME_API_ACTION',
     payload: {
-      data: "stuff",
+      data: 'stuff',
     },
     offline: {
-      apiData: "the data",
+      apiData: 'the data',
       dependencyPaths: {
-        path: "payload.data",
-        type: "DATA_IDENTIFIER",
+        path: 'payload.data',
+        type: 'DATA_IDENTIFIER',
       },
     },
   };
@@ -113,13 +113,13 @@ it("passes action through if an optimistic action", () => {
   });
 
   realStore.subscribe(() => {
-    throw new Error("not expecting to receive a real action");
+    throw new Error('not expecting to receive a real action');
   });
 
   optimisticStore.dispatch(action);
 });
 
-it("passes action through if it is internal state management action", () => {
+it('passes action through if it is internal state management action', () => {
   const { optimisticStore, realStore } = createStores();
 
   const action = setIsSyncing(true);
@@ -129,7 +129,7 @@ it("passes action through if it is internal state management action", () => {
   });
 
   realStore.subscribe(() => {
-    throw new Error("not expecting to receive a real action");
+    throw new Error('not expecting to receive a real action');
   });
 
   optimisticStore.dispatch(action);

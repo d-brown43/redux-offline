@@ -1,4 +1,4 @@
-declare module "renderjson" {
+declare module 'renderjson' {
   type DefaultFn = (object: any) => HTMLElement;
 
   interface RenderJson {

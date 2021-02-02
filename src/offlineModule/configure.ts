@@ -1,43 +1,19 @@
-import { GetState, OptimisticConfig } from "./internalTypes";
-import { applyMiddleware, compose, createStore, Store } from "redux";
-import { Configure, OfflineConfig } from "./types";
-import {
-  createOptimisticMiddleware,
-  createRealStoreMiddleware,
-} from "./middleware";
-import { reduxBatch } from "@manaflair/redux-batch";
-import subscribeToQueue from "./processQueue";
-
-const makeGetState = (config: OfflineConfig): GetState => (store: Store) => {
-  return config.selector(store.getState());
-};
+import { OptimisticConfig } from './internalTypes';
+import { applyMiddleware, compose, Store } from 'redux';
+import { Configure } from './types';
+import { createOptimisticMiddleware } from './middleware';
+import { reduxBatch } from '@manaflair/redux-batch';
+import subscribeToQueue from './processQueue';
+import { configureInternalConfig } from './configureInternal';
 
 const makeRun = (configuredConfig: OptimisticConfig) => (
   optimisticStore: Store
 ) => {
-  const { getState, store, config } = configuredConfig;
-
-  subscribeToQueue({
-    store,
-    optimisticStore,
-    config,
-    getState,
-  });
+  subscribeToQueue({ ...configuredConfig, optimisticStore });
 };
 
 const configure: Configure = (config) => {
-  const getState = makeGetState(config);
-  const store = createStore(
-    config.rootReducer,
-    applyMiddleware(createRealStoreMiddleware({ config }))
-  );
-
-  const internalConfig = {
-    getState,
-    config,
-    store,
-  };
-
+  const internalConfig = configureInternalConfig(config);
   const optimisticMiddleware = createOptimisticMiddleware(internalConfig);
 
   const { useBatching = true } = config;
@@ -51,7 +27,7 @@ const configure: Configure = (config) => {
   return {
     storeEnhancer,
     run,
-    store,
+    store: internalConfig.store,
   };
 };
 
