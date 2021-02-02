@@ -1,46 +1,126 @@
-# Getting Started with Create React App
+<!--
+*** Thanks for checking out the Best-README-Template. If you have a suggestion
+*** that would make this better, please fork the repo and create a pull request
+*** or simply open an issue with the tag "enhancement".
+*** Thanks again! Now go create something AMAZING! :D
+-->
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
-## Available Scripts
 
-In the project directory, you can run:
+<!-- PROJECT SHIELDS -->
+<!--
+*** I'm using markdown "reference style" links for readability.
+*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
+*** See the bottom of this document for the declaration of the reference variables
+*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
+*** https://www.markdownguide.org/basic-syntax/#reference-style-links
+-->
+[![Contributors][contributors-shield]][contributors-url]
+[![Forks][forks-shield]][forks-url]
+[![Stargazers][stars-shield]][stars-url]
+[![Issues][issues-shield]][issues-url]
+[![MIT License][license-shield]][license-url]
+[![LinkedIn][linkedin-shield]][linkedin-url]
 
-### `npm start`
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+<br />
+<p align="center">
+<h3 align="center">Offline Redux Queue</h3>
 
-### `npm test`
+  <p align="center">
+    A library for managing optimistic updates in your redux data store
+  </p>
+</p>
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
-### `npm run build`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+<!-- TABLE OF CONTENTS -->
+<details open="open">
+  <summary>Table of Contents</summary>
+  <ol>
+    <li>
+      <a href="#about-the-project">About The Project</a>
+      <ul>
+        <li><a href="#built-with">Built With</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#getting-started">Getting Started</a>
+      <ul>
+        <li><a href="#prerequisites">Prerequisites</a></li>
+        <li><a href="#installation">Installation</a></li>
+      </ul>
+    </li>
+    <li><a href="#usage">Usage</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
+  </ol>
+</details>
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
 
-### `npm run eject`
+<!-- ABOUT THE PROJECT -->
+## About The Project
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+This is a project inspired by [redux-offline](https://github.com/redux-offline/redux-offline), which works quite well, but has a big main shortcoming,
+in that it does not help you manage your optimistic-dependent entities.
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Using the go to TODO example, if you create some entities optimistically, e.g. a folder for organising notes, and a note to go inside the folder:
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+```
+// Optimistic folder entity
+{
+    id: 1 /* client generated temporary id */,
+    folderName: 'My folder name'
+}
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+// Optimistic note entity, linking to the optimistic folder entity (imagine you have a relational database model in your backend service)
+{
+    id: 1 /* client generated temporary id */,
+    folderId: 1 /* references the id from the JSON above, foreign key */,
+    noteContent: 'Some note content',
+}
+```
 
-## Learn More
+Then you have created a dependency between an optimistic note and an optimistic folder, where your note
+now depends on a temporary id which will most likely get replaced when you actually create the entity in your API.
+If you don't do anything about this, once you update your store with the new ID/other values generated
+by your backend, the relationship will be broken and your note will reference a non-existent folder.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+You could manually manage relationships in your frontend between optimistic entities, but it is
+much more convenient to have your optimistic-data framework mostly manage this for you. This lets
+you use the server-side representation of your entities (e.g. by foreign keys in a relational database)
+without having to duplicate all that effort in your frontend code.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+This framework lets you describe relationships between entities, describe how to update the relationships,
+and all the state changes are handled for you.
+
+### Built With
+
+This section should list any major frameworks that you built your project using. Leave any add-ons/plugins for the acknowledgements section. Here are a few examples.
+* [redux](https://redux.js.org/)
+
+
+<!-- GETTING STARTED -->
+## Getting Started
+
+This is a pretty straightforward library, that only requires you to have redux installed as a prerequisite.This project is purely for managing data in a redux store, so you will need to have redux already installed in your project.
+
+  ```sh
+  npm install redux
+  ```
+
+<!-- USAGE EXAMPLES -->
+## Usage
+
+Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+
+_For more examples, please refer to the [Documentation](https://example.com)_
+
+
+
+<!-- ROADMAP -->
+## Roadmap
+
+- Serialisation support/documentation
+- Idempotence support via generating unique client-side identifiers to prevent duplicate entities being created for example## Acknowledgements
