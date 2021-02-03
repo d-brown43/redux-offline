@@ -3,7 +3,7 @@ import { Action } from 'redux';
 export type NetworkEffect = {};
 
 export type OfflineEffects = {
-  networkEffect?: NetworkEffect;
+  networkEffect: NetworkEffect;
 };
 
 export type OfflineAction = Action & {
@@ -17,3 +17,6 @@ export type OfflineState = {
     pendingActions: OfflineAction[];
   };
 };
+
+
+export type NetworkEffectHandler<Result> = (networkEffect: NetworkEffect) => Promise<Result>;
