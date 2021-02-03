@@ -9,13 +9,15 @@ afterEach(() => {
 });
 
 it('makes network requests given a network interface', async () => {
-  const handler: NetworkEffectHandler<any> = (networkEffect) => {
+  const handler = (networkEffect: any) => {
     makeRequest(networkEffect);
-    return Promise.resolve();
+    return Promise.resolve(null);
   };
 
   await networkEffectHandler(handler, {
     offline: {
+      commitAction: { type: 'COMMIT_ACTION' },
+      rollbackAction: { type: 'ROLLBACK_ACTION' },
       networkEffect: {
         some: 'data',
       },
@@ -31,13 +33,15 @@ it('makes network requests given a network interface', async () => {
 });
 
 it('rejects with errors', async () => {
-  const handler: NetworkEffectHandler<any> = async () => {
+  const handler: NetworkEffectHandler = async () => {
     throw new Error('test error');
   };
 
   await expect(
     networkEffectHandler(handler, {
       offline: {
+        commitAction: { type: 'COMMIT_ACTION' },
+        rollbackAction: { type: 'ROLLBACK_ACTION' },
         networkEffect: {
           some: 'data',
         },
