@@ -132,5 +132,6 @@ _For more examples, please refer to the [Documentation](https://example.com)_
 
 - Support for custom redux-store key other than `offlineQueue`
 - Serialisation support/documentation
+- Support for custom network detector (e.g. for environments other than a browser)
 - Idempotence support via generating unique client-side identifiers to prevent duplicate entities being created for
   example## Acknowledgements
