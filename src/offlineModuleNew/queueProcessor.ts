@@ -1,6 +1,20 @@
 import {OfflineQueueRuntimeConfig, RootState} from "./types";
-import {getIsOnline, getIsProcessing, hasPendingActions} from "./selectors";
-import {startProcessing} from "./actions";
+import {getIsOnline, getIsProcessing, getPendingActions, hasPendingActions} from "./selectors";
+import {startProcessing, stopProcessing} from "./actions";
+import networkEffectHandler from "./networkEffectHandler";
+
+export const processQueue = async <ST extends RootState>(config: OfflineQueueRuntimeConfig<ST>) => {
+  const state = config.store.getState();
+
+  if (!hasPendingActions(state)) {
+    config.store.dispatch(stopProcessing());
+  } else {
+    const queue = getPendingActions(state);
+    const firstAction = queue[0];
+
+    await networkEffectHandler(config.networkEffectHandler, firstAction);
+  }
+};
 
 const queueProcessor = <ST extends RootState>(config: OfflineQueueRuntimeConfig<ST>) => {
   const startIfReady = () => {

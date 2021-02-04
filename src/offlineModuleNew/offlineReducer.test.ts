@@ -1,25 +1,24 @@
 import offlineReducer from './offlineReducer';
 import {MaybeOfflineAction, OfflineAction, OfflineState} from './types';
-import {goOffline, goOnline, startProcessing, stopProcessing} from './actions';
+import {actionHandled, goOffline, goOnline, startProcessing, stopProcessing} from './actions';
 import {getIsOnline, getIsProcessing, getPendingActions} from "./selectors";
 import {makeRootState} from "./test/utils";
 
+const offlineAction: OfflineAction = {
+  type: 'SOME_ACTION',
+  payload: {
+    some: 'data',
+  },
+  offline: {
+    commitAction: {
+      type: 'COMMIT_ACTION',
+    },
+    networkEffect: {},
+  },
+};
+
 it('adds offline actions to the queue', () => {
-  const offlineAction: OfflineAction = {
-    type: 'SOME_ACTION',
-    payload: {
-      some: 'data',
-    },
-    offline: {
-      commitAction: {
-        type: 'COMMIT_ACTION',
-      },
-      networkEffect: {},
-    },
-  };
-
   const state = makeRootState(offlineReducer(undefined, offlineAction));
-
   expect(getPendingActions(state)).toEqual([offlineAction]);
 });
 
@@ -72,4 +71,12 @@ it('updates processing status when starting processing', () => {
 it('updates processing status when stopping processing', () => {
   const state = makeRootState(offlineReducer(undefined, stopProcessing()));
   expect(getIsProcessing(state)).toEqual(false);
+});
+
+it('removes first action from pending actions when marked as handled', () => {
+  const state = makeRootState(offlineReducer(undefined, offlineAction));
+  expect(getPendingActions(state).length).toEqual(1);
+
+  const nextState = makeRootState(offlineReducer(state.offline, actionHandled()));
+  expect(getPendingActions(nextState).length).toEqual(0);
 });
