@@ -1,7 +1,7 @@
 import { NetworkEffectHandler, OfflineAction } from './types';
 
-const networkEffectHandler = <Result>(
-  effectHandler: NetworkEffectHandler<Result>,
+const networkEffectHandler = (
+  effectHandler: NetworkEffectHandler,
   offlineAction: OfflineAction
 ) => {
   return effectHandler(offlineAction.offline.networkEffect)

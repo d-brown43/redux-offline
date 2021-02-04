@@ -1,4 +1,4 @@
-import { NetworkEffectHandler } from './types';
+import {NetworkEffect, NetworkEffectHandler} from './types';
 import networkEffectHandler from './networkEffectHandler';
 
 const makeRequest = jest.fn();
@@ -9,9 +9,9 @@ afterEach(() => {
 });
 
 it('makes network requests given a network interface', async () => {
-  const handler = (networkEffect: any) => {
+  const handler = (networkEffect: NetworkEffect): any => {
     makeRequest(networkEffect);
-    return Promise.resolve(null);
+    return Promise.resolve('result');
   };
 
   await networkEffectHandler(handler, {

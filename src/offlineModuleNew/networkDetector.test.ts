@@ -1,11 +1,5 @@
 import networkDetector from "./networkDetector";
-
-const setOnlineStatusInitial = (isOnline: boolean) => {
-  Object.defineProperty(navigator, 'onLine', {
-    value: isOnline,
-    configurable: true,
-  });
-};
+import {dispatchOfflineEvent, dispatchOnlineEvent, setOnlineStatusInitial} from "./test/utils";
 
 it.each([
   [true],
@@ -23,8 +17,7 @@ it('calls given callback with true when online', () => {
   const detector = jest.fn();
   networkDetector(detector);
 
-  const event = new Event('online');
-  window.dispatchEvent(event);
+  dispatchOnlineEvent();
 
   expect(detector).toHaveBeenCalledTimes(2);
   expect(detector).toHaveBeenNthCalledWith(1, false);
@@ -36,8 +29,7 @@ it('calls given callback with false when offline', () => {
   const detector = jest.fn();
   networkDetector(detector);
 
-  const event = new Event('offline');
-  window.dispatchEvent(event);
+  dispatchOfflineEvent();
 
   expect(detector).toHaveBeenCalledTimes(2);
   expect(detector).toHaveBeenNthCalledWith(1, true);

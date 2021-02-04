@@ -1,11 +1,7 @@
-import {QueueProcessorConfig} from "./types";
-import networkDetector from "./networkDetector";
+import {QueueProcessorConfig, RootState} from "./types";
 
-const queueProcessor = <StoreType>(config: QueueProcessorConfig<StoreType>) => {
-  networkDetector(isOnline => {
 
-  });
-
+const queueProcessor = <ST extends RootState>(config: QueueProcessorConfig<ST>) => {
   config.store.subscribe(() => {
 
   });

@@ -32,7 +32,9 @@ export type RootState = {
 
 export type NetworkEffectHandler = <Result>(networkEffect: NetworkEffect) => Promise<Result>;
 
-export type QueueProcessorConfig<StoreType> = {
+export type StoreType<ST> = Store<ST, MaybeOfflineAction>;
+
+export type QueueProcessorConfig<ST> = {
   networkEffectHandler: NetworkEffectHandler;
-  store: Store<StoreType, MaybeOfflineAction>;
+  store: StoreType<ST>;
 };
