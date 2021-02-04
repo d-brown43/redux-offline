@@ -1,7 +1,8 @@
-import {RootState, StoreType} from "./types";
+import {OfflineQueueRuntimeConfig, RootState, StoreType} from "./types";
 import networkDetector from "./networkDetector";
 import {getIsOnline} from "./selectors";
 import {goOffline, goOnline} from "./actions";
+import queueProcessor from "./queueProcessor";
 
 const mapNetworkToState = <ST extends RootState>(store: StoreType<ST>) => {
   networkDetector(isOnline => {
@@ -13,8 +14,9 @@ const mapNetworkToState = <ST extends RootState>(store: StoreType<ST>) => {
   });
 };
 
-const configureRuntime = <ST extends RootState>(store: StoreType<ST>) => {
-  mapNetworkToState(store);
+const configureRuntime = <ST extends RootState>(config: OfflineQueueRuntimeConfig<ST>) => {
+  mapNetworkToState(config.store);
+  queueProcessor(config);
 };
 
 export default configureRuntime;

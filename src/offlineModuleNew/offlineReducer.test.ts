@@ -1,9 +1,8 @@
 import offlineReducer from './offlineReducer';
-import {MaybeOfflineAction, OfflineAction, OfflineState, RootState} from './types';
-import { goOffline, goOnline } from './actions';
-import {getIsOnline, getPendingActions} from "./selectors";
-
-const makeRootState = (state: OfflineState): RootState => ({ offline: state });
+import {MaybeOfflineAction, OfflineAction, OfflineState} from './types';
+import {goOffline, goOnline, startProcessing, stopProcessing} from './actions';
+import {getIsOnline, getIsProcessing, getPendingActions} from "./selectors";
+import {makeRootState} from "./test/utils";
 
 it('adds offline actions to the queue', () => {
   const offlineAction: OfflineAction = {
@@ -41,6 +40,7 @@ it('updates online status when going online', () => {
   const initialState: OfflineState = {
     isOnline: false,
     offlineQueue: {
+      isProcessing: false,
       pendingActions: [],
     },
   };
@@ -54,6 +54,7 @@ it('updates online status when going offline', () => {
   const initialState: OfflineState = {
     isOnline: true,
     offlineQueue: {
+      isProcessing: false,
       pendingActions: [],
     },
   };
@@ -61,4 +62,14 @@ it('updates online status when going offline', () => {
   const state = makeRootState(offlineReducer(initialState, goOffline()));
 
   expect(getIsOnline(state)).toEqual(false);
+});
+
+it('updates processing status when starting processing', () => {
+  const state = makeRootState(offlineReducer(undefined, startProcessing()));
+  expect(getIsProcessing(state)).toEqual(true);
+});
+
+it('updates processing status when stopping processing', () => {
+  const state = makeRootState(offlineReducer(undefined, stopProcessing()));
+  expect(getIsProcessing(state)).toEqual(false);
 });

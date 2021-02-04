@@ -22,6 +22,7 @@ export type MaybeOfflineAction = Action & Partial<OfflineAction>
 export type OfflineState = {
   isOnline: boolean;
   offlineQueue: {
+    isProcessing: boolean;
     pendingActions: OfflineAction[];
   };
 };
@@ -30,11 +31,11 @@ export type RootState = {
   offline: OfflineState;
 };
 
-export type NetworkEffectHandler = <Result>(networkEffect: NetworkEffect) => Promise<Result>;
+export type NetworkEffectHandler = (networkEffect: NetworkEffect) => Promise<any>;
 
 export type StoreType<ST> = Store<ST, MaybeOfflineAction>;
 
-export type QueueProcessorConfig<ST> = {
+export type OfflineQueueRuntimeConfig<ST> = {
   networkEffectHandler: NetworkEffectHandler;
   store: StoreType<ST>;
 };

@@ -1,9 +1,10 @@
 import { MaybeOfflineAction, OfflineAction, OfflineState } from './types';
-import {GO_OFFLINE, GO_ONLINE} from "./actions";
+import {GO_OFFLINE, GO_ONLINE, START_PROCESSING, STOP_PROCESSING} from "./actions";
 
 const initialState: OfflineState = {
   isOnline: false,
   offlineQueue: {
+    isProcessing: false,
     pendingActions: [],
   },
 };
@@ -33,6 +34,20 @@ const offlineReducer = (state = initialState, action: MaybeOfflineAction) => {
       ...state,
       isOnline: false,
     };
+    case START_PROCESSING: return {
+      ...state,
+      offlineQueue: {
+        ...state.offlineQueue,
+        isProcessing: true,
+      }
+    };
+    case STOP_PROCESSING: return {
+      ...state,
+      offlineQueue: {
+        ...state.offlineQueue,
+        isProcessing: false,
+      }
+    }
     default: return state;
   }
 };
