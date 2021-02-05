@@ -27,3 +27,24 @@ export const createTestStore = () => {
   });
   return createStore(rootReducer);
 };
+
+export const waitFor = (assertion: () => void, intervalLength = 100, timeout = 3000) => {
+  return new Promise((resolve, reject) => {
+    let timerId: NodeJS.Timeout;
+
+    const intervalId = setInterval(() => {
+      try {
+        assertion();
+        clearTimeout(timerId);
+        resolve(null);
+      } catch (e) {
+        // Ignore assertion errors
+      }
+    }, intervalLength);
+
+    timerId = setTimeout(() => {
+      clearInterval(intervalId);
+      reject(`Test assertion did not pass after ${timeout}ms`);
+    }, timeout);
+  });
+};

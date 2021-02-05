@@ -5,10 +5,9 @@ import {
   RootState,
   StoreType,
 } from './types';
-import { actionHandled } from './actions';
 
 const isAction = (action: any): action is Action => {
-  return typeof (action as Action).type !== 'undefined';
+  return Boolean(action && typeof (action as Action).type !== 'undefined');
 };
 
 const networkEffectHandler = <ST extends RootState>(
@@ -20,8 +19,6 @@ const networkEffectHandler = <ST extends RootState>(
     .then((result) => {
       // TODO Add action verification here and warn if it doesn't look like a redux action
       store.dispatch(result);
-      // Queue management does not happen here
-      store.dispatch(actionHandled());
 
       return result;
     })
@@ -30,7 +27,6 @@ const networkEffectHandler = <ST extends RootState>(
       if (err && isAction(err)) {
         store.dispatch(err);
       }
-      store.dispatch(actionHandled());
     });
 };
 
