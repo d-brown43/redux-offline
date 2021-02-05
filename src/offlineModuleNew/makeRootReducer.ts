@@ -1,37 +1,55 @@
 import {RootState} from "./types";
-import {REBUILD_STORE, REPLACE_ROOT_STATE, replaceRootState} from "./actions";
-import {AnyAction} from "redux";
-import {getPendingActions} from "./selectors";
+import {isInternalAction, REBUILD_STORE, REPLACE_ROOT_STATE} from "./actions";
+import {AnyAction, Reducer} from "redux";
+import {getPendingActions, getRealState} from "./selectors";
 import {isOfflineAction} from "./utils";
 
-const makeRootReducer = <ST extends RootState>(rootReducer: (state: ST | undefined, action: AnyAction) => ST) => {
-  return (state: ST, action: AnyAction): ST => {
-    if (action.type === REPLACE_ROOT_STATE) {
+const makeRootReducer = <ST extends RootState>(rootReducer: Reducer<ST>): Reducer<ST> => {
+  return (state: ST | undefined, action: AnyAction): ST => {
+    if (!state) {
+      // This must be an initialisation action from redux
+      const { offline, ...rest } = rootReducer(state, action);
       return {
-        ...(action as ReturnType<typeof replaceRootState>).payload,
-        offline: state.offline,
+        ...rest,
+        offline: {
+          ...offline,
+          realState: rest,
+        }
       } as ST;
     }
+
+    if (action.type === REPLACE_ROOT_STATE) {
+      // We are rebuilding the optimistic state, since we've just handled an optimistic action
+      // Keep the offline-state from the optimistic store as that's where we keep it
+      return {
+        ...action.payload,
+        offline: state.offline,
+      };
+    }
+
     if (action.type === REBUILD_STORE) {
+      // State will have been initialised by this point
       const pendingActions = getPendingActions(state);
-      return pendingActions.reduce((acc, action) => {
+      return pendingActions.reduce<ST>((acc, action) => {
         // Remove the offline portion of the action to prevent re-queueing it,
         // we just want the optimistic effects to be rebuilt
         const { offline, ...rest } = action;
         return rootReducer(acc, rest);
       }, state);
     }
-    // If the action is an optimistic action, return the changes directly and do not update the real store
-    if (isOfflineAction(action)) {
+
+    // If it's an internal action/optimistic action, apply to the optimistic state
+    // without tracking to real state
+    if (isOfflineAction(action) || isInternalAction(action)) {
       return rootReducer(state, action);
     }
-    const nextState = rootReducer(state, action);
+
+    const nextState = rootReducer(getRealState(state), action);
     const { offline, ...rest } = nextState;
     return {
       ...nextState,
       offline: {
-        ...nextState.offline,
-        // Keep track of the real state in our offline reducer
+        ...(!state ? nextState.offline : state.offline),
         realState: rest,
       }
     };
