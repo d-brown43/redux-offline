@@ -1,5 +1,6 @@
-import {NetworkEffect, NetworkEffectHandler} from './types';
+import { OfflineAction } from './types';
 import networkEffectHandler from './networkEffectHandler';
+import { createTestStore } from './test/utils';
 
 const makeRequest = jest.fn();
 const handleError = jest.fn();
@@ -9,44 +10,29 @@ afterEach(() => {
 });
 
 it('makes network requests given a network interface', async () => {
-  const handler = (networkEffect: NetworkEffect): any => {
-    makeRequest(networkEffect);
-    return Promise.resolve('result');
+  const handler = (action: OfflineAction): any => {
+    makeRequest(action.offline.networkEffect);
+    return Promise.resolve({
+      type: 'COMMIT_ACTION',
+    });
   };
 
-  await networkEffectHandler(handler, {
+  const action = {
     offline: {
-      commitAction: { type: 'COMMIT_ACTION' },
-      rollbackAction: { type: 'ROLLBACK_ACTION' },
       networkEffect: {
         some: 'data',
       },
     },
     type: 'ACTION_TYPE',
-  });
+  };
+
+  const store = createTestStore();
+
+  await networkEffectHandler(handler, action, store);
 
   expect(makeRequest).toHaveBeenCalledWith({
     some: 'data',
   });
 
   expect(handleError).not.toHaveBeenCalled();
-});
-
-it('rejects with errors', async () => {
-  const handler: NetworkEffectHandler = async () => {
-    throw new Error('test error');
-  };
-
-  await expect(
-    networkEffectHandler(handler, {
-      offline: {
-        commitAction: { type: 'COMMIT_ACTION' },
-        rollbackAction: { type: 'ROLLBACK_ACTION' },
-        networkEffect: {
-          some: 'data',
-        },
-      },
-      type: 'ACTION_TYPE',
-    })
-  ).rejects.toThrowError('test error');
 });

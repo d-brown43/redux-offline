@@ -6,13 +6,13 @@ import networkEffectHandler from "./networkEffectHandler";
 export const processQueue = async <ST extends RootState>(config: OfflineQueueRuntimeConfig<ST>) => {
   const state = config.store.getState();
 
-  if (!hasPendingActions(state)) {
+  if (!hasPendingActions(state) || !getIsOnline(state)) {
     config.store.dispatch(stopProcessing());
   } else {
     const queue = getPendingActions(state);
     const firstAction = queue[0];
 
-    await networkEffectHandler(config.networkEffectHandler, firstAction);
+    await networkEffectHandler(config.networkEffectHandler, firstAction, config.store);
   }
 };
 
@@ -26,7 +26,7 @@ const queueProcessor = <ST extends RootState>(config: OfflineQueueRuntimeConfig<
       && !getIsProcessing(state)
     ) {
       config.store.dispatch(startProcessing());
-      // call processing function
+      processQueue(config);
     }
   };
 

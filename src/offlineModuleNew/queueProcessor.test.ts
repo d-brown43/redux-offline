@@ -7,15 +7,15 @@ it('starts processing when online status detected and actions pending', () => {
   setOnlineStatusInitial(false);
   const store = createTestStore();
   configureRuntime({
-    networkEffectHandler: () => Promise.resolve(null),
+    networkEffectHandler: () => Promise.resolve({
+      type: 'HANDLED_ACTION',
+    }),
     store,
   });
 
   const action: OfflineAction = {
     type: 'MY_ACTION',
     offline: {
-      commitAction: { type: 'COMMIT_ACTION' },
-      rollbackAction: { type: 'ROLLBACK_ACTION' },
       networkEffect: {},
     },
   };

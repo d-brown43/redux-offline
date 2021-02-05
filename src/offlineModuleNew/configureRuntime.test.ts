@@ -1,12 +1,20 @@
-import {createTestStore, dispatchOfflineEvent, dispatchOnlineEvent, setOnlineStatusInitial} from "./test/utils";
-import configureRuntime from "./configureRuntime";
-import {getIsOnline} from "./selectors";
+import {
+  createTestStore,
+  dispatchOfflineEvent,
+  dispatchOnlineEvent,
+  setOnlineStatusInitial,
+} from './test/utils';
+import configureRuntime from './configureRuntime';
+import { getIsOnline } from './selectors';
 
 it('subscribes to offline/online events', () => {
   setOnlineStatusInitial(false);
   const store = createTestStore();
 
-  configureRuntime(store);
+  configureRuntime({
+    networkEffectHandler: () => Promise.resolve({ type: 'ACTION' }),
+    store,
+  });
   expect(getIsOnline(store.getState())).toEqual(false);
 
   dispatchOfflineEvent();

@@ -1,8 +1,14 @@
-import {NetworkEffectHandler, OfflineAction, RollbackRequiredAction, RootState, StoreType} from './types';
-import {actionHandled, commitAction, errorAction, rollbackAction} from "./actions";
+import { Action } from 'redux';
+import {
+  NetworkEffectHandler,
+  OfflineAction,
+  RootState,
+  StoreType,
+} from './types';
+import { actionHandled } from './actions';
 
-const isRollbackAction = (action: OfflineAction): action is RollbackRequiredAction => {
-  return typeof (action as RollbackRequiredAction).offline.rollbackAction !== 'undefined';
+const isAction = (action: any): action is Action => {
+  return typeof (action as Action).type !== 'undefined';
 };
 
 const networkEffectHandler = <ST extends RootState>(
@@ -10,24 +16,19 @@ const networkEffectHandler = <ST extends RootState>(
   offlineAction: OfflineAction,
   store: StoreType<ST>
 ) => {
-  return effectHandler(offlineAction.offline.networkEffect)
+  return effectHandler(offlineAction)
     .then((result) => {
+      // TODO Add action verification here and warn if it doesn't look like a redux action
+      store.dispatch(result);
       // Queue management does not happen here
-      store.dispatch(commitAction(offlineAction));
       store.dispatch(actionHandled());
 
       return result;
     })
     .catch((err) => {
       // Queue management does not happen here
-      if (isRollbackAction(offlineAction)) {
-        // Rollback is optional
-        store.dispatch(rollbackAction(offlineAction));
-
-        // TODO Handle dependent actions
-      } else {
-        // We notify with a default error action otherwise
-        store.dispatch(errorAction(err));
+      if (err && isAction(err)) {
+        store.dispatch(err);
       }
       store.dispatch(actionHandled());
     });
