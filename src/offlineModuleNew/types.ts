@@ -19,9 +19,11 @@ export type OfflineState = {
     isProcessing: boolean;
     pendingActions: OfflineAction[];
   };
+  realState: any;
 };
 
 export type RootState = {
+  [k: string]: any;
   offline: OfflineState;
 };
 

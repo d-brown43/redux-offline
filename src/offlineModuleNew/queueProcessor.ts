@@ -1,7 +1,8 @@
 import {OfflineQueueRuntimeConfig, RootState} from "./types";
-import {getIsOnline, getIsProcessing, getPendingActions, hasPendingActions} from "./selectors";
-import {actionHandled, startProcessing, stopProcessing} from "./actions";
+import {getIsOnline, getIsProcessing, getPendingActions, getRealState, hasPendingActions} from "./selectors";
+import {actionHandled, rebuildStore, replaceRootState, startProcessing, stopProcessing} from "./actions";
 import networkEffectHandler from "./networkEffectHandler";
+import {AnyAction} from "redux";
 
 export const processQueue = async <ST extends RootState>(config: OfflineQueueRuntimeConfig<ST>): Promise<any> => {
   const state = config.store.getState();
@@ -12,8 +13,22 @@ export const processQueue = async <ST extends RootState>(config: OfflineQueueRun
     const queue = getPendingActions(state);
     const firstAction = queue[0];
 
-    await networkEffectHandler(config.networkEffectHandler, firstAction, config.store);
+    let result = null;
+    try {
+      result = await networkEffectHandler(config.networkEffectHandler, firstAction);
+    } catch (e) {
+      if (typeof (e as AnyAction).type !== 'undefined') {
+        result = e;
+      }
+    }
+
     config.store.dispatch(actionHandled());
+    config.store.dispatch(replaceRootState(getRealState(state)));
+    if (result) {
+      config.store.dispatch(result);
+    }
+    config.store.dispatch(rebuildStore());
+
     return processQueue(config);
   }
   return Promise.resolve();

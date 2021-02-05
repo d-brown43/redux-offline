@@ -6,3 +6,4 @@ export const getPendingActions = (state: RootState) => state.offline.offlineQueu
 export const hasPendingActions = (state: RootState) => state.offline.offlineQueue.pendingActions.length > 0;
 
 export const getIsProcessing = (state: RootState) => state.offline.offlineQueue.isProcessing;
+export const getRealState = (state: RootState) => state.offline.realState;

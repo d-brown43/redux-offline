@@ -13,6 +13,7 @@ const initialState: OfflineState = {
     isProcessing: false,
     pendingActions: [],
   },
+  realState: undefined,
 };
 
 const isOfflineAction = (
