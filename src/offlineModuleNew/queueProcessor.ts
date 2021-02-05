@@ -49,7 +49,6 @@ const queueProcessor = <ST extends RootState>(config: OfflineQueueRuntimeConfig<
   };
 
   config.store.subscribe(() => {
-    console.log('subscription on store', config.store.getState());
     startIfReady();
   });
   startIfReady();

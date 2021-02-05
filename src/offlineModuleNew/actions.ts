@@ -10,6 +10,7 @@ export const STOP_PROCESSING = `${PREFIX}:STOP_PROCESSING`;
 export const ACTION_HANDLED = `${PREFIX}:ACTION_HANDLED`;
 export const REPLACE_ROOT_STATE = `${PREFIX}:REPLACE_ROOT_STATE`;
 export const REBUILD_STORE = `${PREFIX}:REBUILD_STORE`;
+export const INITIALISE_STATE = `${PREFIX}:INITIALISE_STATE`;
 
 export const isInternalAction = (action: AnyAction) => [
   GO_ONLINE,
