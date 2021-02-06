@@ -14,7 +14,6 @@ import {
   startProcessing,
   stopProcessing,
 } from './actions';
-import networkEffectHandler from './networkEffectHandler';
 
 const updateDependentActions = <ST extends RootState>(
   remainingActions: OfflineAction[],
@@ -45,10 +44,7 @@ export const processQueue = async <ST extends RootState>(
 
     let result = null;
     try {
-      result = await networkEffectHandler(
-        config.networkEffectHandler,
-        firstAction
-      );
+      result = await config.networkEffectHandler(firstAction);
       if (result) {
         updatedQueue = updateDependentActions(
           remainingQueue,
