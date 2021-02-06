@@ -53,6 +53,9 @@ it('does not update the real state if an optimistic action is dispatched', () =>
       networkEffect: {},
     },
   };
-  const state = rootReducer(undefined as any, offlineAction);
-  expect(getRealState(state)).toEqual(undefined);
+  const state = rootReducer(
+    rootReducer(undefined, { type: 'init dummy' }),
+    offlineAction,
+  );
+  expect(getRealState(state)).toEqual({ someState: 0 });
 });
