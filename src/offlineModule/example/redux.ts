@@ -59,6 +59,7 @@ const reducer = (state = initialState, action: AnyAction) => {
     case DELETE_FOLDER_RESOLVED:
       return {
         ...state,
+        latestError: null,
         notes: Object.values(state.notes).reduce((acc, note) => {
           if (note.folderId !== action.payload.id) {
             return mergeEntity(acc, note);
@@ -71,6 +72,10 @@ const reducer = (state = initialState, action: AnyAction) => {
           }
           return acc;
         }, {}),
+        currentFolderId:
+          state.currentFolderId === action.payload.id
+            ? null
+            : state.currentFolderId,
       };
     case DELETE_FOLDER_ERROR:
       return {
@@ -150,12 +155,15 @@ export const deleteFolderResolved = (folder: Folder) => ({
 
 export const deleteFolderError = (folder: Folder) => ({
   type: DELETE_FOLDER_ERROR,
-  payload: `Unable to delete folder: ${folder}`,
+  payload: `Unable to delete folder: ${folder.name}`,
 });
 
-export const setCurrentFolderId = (id: string) => ({
+export const setCurrentFolderId = (id: string): OfflineAction => ({
   type: SET_CURRENT_FOLDER_ID,
   payload: id,
+  offline: {
+    dependent: true,
+  },
   // TODO this is a dependent action, mark it as such
 });
 
@@ -175,6 +183,8 @@ export const getFolders = (state: RootState) =>
 
 export const getCurrentFolderId = (state: RootState) =>
   state.myState.currentFolderId;
+
+export const getLastError = (state: RootState) => state.myState.latestError;
 
 const rootReducer = combineReducers({
   myState: reducer,

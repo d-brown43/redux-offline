@@ -14,6 +14,7 @@ import {
   startProcessing,
   stopProcessing,
 } from './actions';
+import { DELETE_PENDING_ACTION } from './utils';
 
 const updateDependentActions = <ST extends RootState>(
   remainingActions: OfflineAction[],
@@ -21,14 +22,25 @@ const updateDependentActions = <ST extends RootState>(
   fulfilledAction: AnyAction,
   config: OfflineQueueRuntimeConfig<ST>
 ) => {
-  return remainingActions.map((pendingAction) => {
+  return remainingActions.reduce<OfflineAction[]>((acc, pendingAction) => {
     const mappedAction = config.mapDependentAction(
       originalAction,
       fulfilledAction,
       pendingAction
     );
-    return mappedAction ? mappedAction : pendingAction;
-  });
+    if (mappedAction !== DELETE_PENDING_ACTION) {
+      return acc.concat([mappedAction ? mappedAction : pendingAction]);
+    }
+    return acc;
+  }, []);
+};
+
+const isNetworkAction = (action: OfflineAction) => {
+  return typeof action.offline.networkEffect !== 'undefined';
+};
+
+const isDependentAction = (action: OfflineAction) => {
+  return action.offline.dependent === true;
 };
 
 export const processQueue = async <ST extends RootState>(
@@ -42,7 +54,15 @@ export const processQueue = async <ST extends RootState>(
     let result = null;
     try {
       const [firstAction] = getPendingActions(getState());
-      result = await config.networkEffectHandler(firstAction);
+      if (isNetworkAction(firstAction)) {
+        result = await config.networkEffectHandler(firstAction);
+      } else if (isDependentAction(firstAction)) {
+        const { offline, ...rest } = firstAction;
+        // We need to dispatch the action as a real action, it depended
+        // on an offline action before, but will have been
+        // updated once the network action completed
+        result = rest;
+      }
     } catch (e) {
       if (typeof (e as AnyAction).type !== 'undefined') {
         result = e;

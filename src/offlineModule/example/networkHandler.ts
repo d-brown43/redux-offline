@@ -29,6 +29,10 @@ const replaceIdAndDate = <T extends IdAndDateEntity>(entity: T): T => {
 };
 
 const networkHandler: NetworkEffectHandler = async (offlineAction) => {
+  console.log(
+    `making fake network request for action: ${offlineAction.type}, with offline metadata:`,
+    offlineAction.offline.networkEffect
+  );
   switch (offlineAction.type) {
     case CREATE_NOTE:
       return delay(createNoteResolved(replaceIdAndDate(offlineAction.payload)));
@@ -38,6 +42,7 @@ const networkHandler: NetworkEffectHandler = async (offlineAction) => {
       );
     case DELETE_FOLDER: {
       if (Math.random() >= 0.5) {
+        console.warn('Faking a network error for action', offlineAction);
         // Randomly fail to delete folders, like a real backend
         return delay(deleteFolderError(offlineAction.payload));
       } else {

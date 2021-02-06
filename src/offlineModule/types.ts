@@ -1,9 +1,11 @@
 import { Action, AnyAction, Store } from 'redux';
+import {DELETE_PENDING_ACTION} from "./utils";
 
 export type NetworkEffect = {};
 
 export type OfflineEffects = {
-  networkEffect: NetworkEffect;
+  networkEffect?: NetworkEffect;
+  dependent?: true;
 };
 
 export type OfflineAction = Action & {
@@ -41,7 +43,7 @@ export type MapDependentAction = (
   originalAction: OfflineAction,
   fulfilledAction: AnyAction,
   pendingAction: OfflineAction
-) => OfflineAction | null;
+) => OfflineAction | null | typeof DELETE_PENDING_ACTION;
 
 export type OfflineQueueRuntimeConfig<ST> = {
   networkEffectHandler: NetworkEffectHandler;
