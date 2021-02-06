@@ -34,33 +34,31 @@ const updateDependentActions = <ST extends RootState>(
 export const processQueue = async <ST extends RootState>(
   config: OfflineQueueRuntimeConfig<ST>
 ): Promise<any> => {
-  const state = config.store.getState();
+  const getState = () => config.store.getState();
 
-  if (!hasPendingActions(state) || !getIsOnline(state)) {
+  if (!hasPendingActions(getState()) || !getIsOnline(getState())) {
     config.store.dispatch(stopProcessing());
   } else {
-    const [firstAction, ...remainingQueue] = getPendingActions(state);
-    let updatedQueue = remainingQueue;
-
     let result = null;
     try {
+      const [firstAction] = getPendingActions(getState());
       result = await config.networkEffectHandler(firstAction);
-      if (result) {
-        updatedQueue = updateDependentActions(
-          remainingQueue,
-          firstAction,
-          result,
-          config
-        );
-      }
     } catch (e) {
       if (typeof (e as AnyAction).type !== 'undefined') {
         result = e;
       }
     }
 
+    const [firstAction, ...remainingQueue] = getPendingActions(getState());
+    const updatedQueue = updateDependentActions(
+      remainingQueue,
+      firstAction,
+      result,
+      config
+    );
+
     config.store.dispatch(replacePendingActions(updatedQueue));
-    config.store.dispatch(replaceRootState(getRealState(state)));
+    config.store.dispatch(replaceRootState(getRealState(getState())));
     if (result) {
       config.store.dispatch(result);
     }

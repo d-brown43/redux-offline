@@ -11,6 +11,10 @@ export type OfflineAction = Action & {
   offline: OfflineEffects;
 };
 
+export type DataOfflineAction<T> = OfflineAction & {
+  payload: T;
+};
+
 export type MaybeOfflineAction = Action & Partial<OfflineAction>;
 
 export type OfflineState = {

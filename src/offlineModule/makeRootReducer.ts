@@ -1,20 +1,27 @@
 import { RootState } from './types';
-import {
-  isInternalAction,
-  REBUILD_STORE,
-  REPLACE_ROOT_STATE,
-} from './actions';
+import { isInternalAction, REBUILD_STORE, REPLACE_ROOT_STATE } from './actions';
 import { AnyAction, Reducer } from 'redux';
 import { getPendingActions, getRealState } from './selectors';
 import { isOfflineAction } from './utils';
 
+const replayPendingActions = <ST extends RootState>(
+  rootReducer: Reducer<ST>,
+  baseState: ST,
+  state: ST
+) => {
+  const pendingActions = getPendingActions(state);
+  return pendingActions.reduce<ST>((acc, action) => {
+    // Remove the offline portion of the action to prevent re-queueing it,
+    // we just want the optimistic effects to be replayed
+    const { offline, ...rest } = action;
+    return rootReducer(acc, rest);
+  }, baseState);
+};
+
 const makeRootReducer = <ST extends RootState>(
   rootReducer: Reducer<ST>
 ): Reducer<ST> => {
-  return (
-    state: ST | undefined,
-    action: AnyAction
-  ): ST => {
+  return (state: ST | undefined, action: AnyAction): ST => {
     if (!state) {
       const { offline, ...rest } = rootReducer(undefined, action);
       return {
@@ -22,7 +29,7 @@ const makeRootReducer = <ST extends RootState>(
         offline: {
           ...offline,
           realState: rest,
-        }
+        },
       } as ST;
     }
     if (action.type === REPLACE_ROOT_STATE) {
@@ -36,14 +43,7 @@ const makeRootReducer = <ST extends RootState>(
 
     // Replay the optimistic actions we have in the queue still
     if (action.type === REBUILD_STORE) {
-      // State will have been initialised by this point
-      const pendingActions = getPendingActions(state);
-      return pendingActions.reduce<ST>((acc, action) => {
-        // Remove the offline portion of the action to prevent re-queueing it,
-        // we just want the optimistic effects to be replayed
-        const { offline, ...rest } = action;
-        return rootReducer(acc, rest);
-      }, state);
+      return replayPendingActions(rootReducer, state, state);
     }
 
     // If it's an internal action/optimistic action, apply to the optimistic state
@@ -53,8 +53,9 @@ const makeRootReducer = <ST extends RootState>(
     }
 
     // This is a real action and we should keep track of it in our "real" state
-    const nextState = rootReducer(getRealState(state), action);
-    const { offline, ...rest } = nextState;
+    const nextRealState = rootReducer(getRealState(state), action);
+    const nextState = replayPendingActions(rootReducer, nextRealState, state);
+    const { offline, ...rest } = nextRealState;
     return {
       ...nextState,
       offline: {
