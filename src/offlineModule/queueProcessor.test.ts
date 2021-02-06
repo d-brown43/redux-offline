@@ -226,6 +226,37 @@ describe('optimistic resolution', () => {
     });
   });
 
+  it('handles errors and does not dispatch action if non-action returned', async () => {
+    const errorNetworkHandler: NetworkEffectHandler = async offlineAction => {
+      switch (offlineAction.type) {
+        case CREATE_NOTE: throw new Error('some error');
+        default: return null;
+      }
+    };
+
+    const store = createStore(makeRootReducer(rootReducer));
+    configureRuntime({
+      store,
+      networkEffectHandler: errorNetworkHandler,
+      mapDependentAction: mapDependentActions,
+    });
+
+    store.dispatch(createNote('test note'));
+
+    await waitFor(() => {
+      const notes: any[] = getNotes(store);
+      expect(notes.length).toEqual(1);
+      expect(notes[0].id).toEqual('temp_id');
+    });
+
+    dispatchOnlineEvent();
+
+    await waitFor(() => {
+      const notes = getNotes(store);
+      expect(notes.length).toEqual(0);
+    });
+  });
+
   it('Updates references to dependent entities', async () => {
     const store = createTestStore();
     store.dispatch(createNote('test note'));

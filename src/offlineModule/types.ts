@@ -29,7 +29,7 @@ export type RootState = {
 
 export type NetworkEffectHandler = (
   offlineAction: OfflineAction
-) => Promise<Action | void>;
+) => Promise<Action | void | null>;
 
 export type StoreType<ST> = Store<ST, MaybeOfflineAction>;
 
