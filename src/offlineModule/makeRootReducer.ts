@@ -1,11 +1,21 @@
-import {RootState} from "./types";
-import {INITIALISE_STATE, isInternalAction, REBUILD_STORE, REPLACE_ROOT_STATE} from "./actions";
-import {AnyAction, Reducer} from "redux";
-import {getPendingActions, getRealState} from "./selectors";
-import {isOfflineAction} from "./utils";
+import { RootState } from './types';
+import {
+  INITIALISE_STATE,
+  isInternalAction,
+  REBUILD_STORE,
+  REPLACE_ROOT_STATE,
+} from './actions';
+import { AnyAction, Reducer } from 'redux';
+import { getPendingActions, getRealState } from './selectors';
+import { isOfflineAction } from './utils';
 
-const makeRootReducer = <ST extends RootState>(rootReducer: Reducer<ST>): Reducer<ST> => {
-  return (state: ST = rootReducer(undefined, { type: INITIALISE_STATE }), action: AnyAction): ST => {
+const makeRootReducer = <ST extends RootState>(
+  rootReducer: Reducer<ST>
+): Reducer<ST> => {
+  return (
+    state: ST = rootReducer(undefined, { type: INITIALISE_STATE }),
+    action: AnyAction
+  ): ST => {
     if (action.type === REPLACE_ROOT_STATE) {
       // We are rebuilding the optimistic state, since we've just handled an optimistic action
       // Keep the offline-state from the optimistic store as that's where we keep it
@@ -39,7 +49,7 @@ const makeRootReducer = <ST extends RootState>(rootReducer: Reducer<ST>): Reduce
       offline: {
         ...(!state ? nextState.offline : state.offline),
         realState: rest,
-      }
+      },
     };
   };
 };

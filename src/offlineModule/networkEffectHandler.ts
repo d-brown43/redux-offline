@@ -1,7 +1,6 @@
 import {
   NetworkEffectHandler,
   OfflineAction,
-  RootState,
 } from './types';
 
 const networkEffectHandler = (

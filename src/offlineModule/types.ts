@@ -1,4 +1,4 @@
-import { Action, Store } from 'redux';
+import { Action, AnyAction, Store } from 'redux';
 
 export type NetworkEffect = {};
 
@@ -33,7 +33,14 @@ export type NetworkEffectHandler = (
 
 export type StoreType<ST> = Store<ST, MaybeOfflineAction>;
 
+export type MapDependentAction = (
+  originalAction: OfflineAction,
+  fulfilledAction: AnyAction,
+  pendingAction: OfflineAction
+) => OfflineAction | null;
+
 export type OfflineQueueRuntimeConfig<ST> = {
   networkEffectHandler: NetworkEffectHandler;
+  mapDependentAction: MapDependentAction;
   store: StoreType<ST>;
 };

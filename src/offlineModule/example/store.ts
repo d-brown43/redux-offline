@@ -32,6 +32,7 @@ const configureStore = () => {
           return Promise.resolve();
       }
     },
+    mapDependentAction: () => null,
   });
 
   return store;

@@ -31,6 +31,7 @@ export const createTestStore = () => {
 export const waitFor = (assertion: () => void, intervalLength = 100, timeout = 3000) => {
   return new Promise((resolve, reject) => {
     let timerId: NodeJS.Timeout;
+    let lastError: any = null;
 
     const intervalId = setInterval(() => {
       try {
@@ -38,13 +39,13 @@ export const waitFor = (assertion: () => void, intervalLength = 100, timeout = 3
         clearTimeout(timerId);
         resolve(null);
       } catch (e) {
-        // Ignore assertion errors
+        lastError = e;
       }
     }, intervalLength);
 
     timerId = setTimeout(() => {
       clearInterval(intervalId);
-      reject(`Test assertion did not pass after ${timeout}ms`);
+      reject(!lastError ? 'Timeout in waitFor reached' : lastError);
     }, timeout);
   });
 };
