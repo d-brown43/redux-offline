@@ -6,31 +6,12 @@
 -->
 
 
-
-<!-- PROJECT SHIELDS -->
-<!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
--->
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
-
-
-
 <br />
 <p align="center">
 <h3 align="center">Offline Redux Queue</h3>
 
-  <p align="center">
-    A library for managing optimistic updates in your redux data store
-  </p>
+<p align="center">
+  A library for managing optimistic updates in your redux data store
 </p>
 
 
@@ -53,6 +34,11 @@
       </ul>
     </li>
     <li><a href="#usage">Usage</a></li>
+    <ul>
+      <li><a href="#writing-optimistic-actions">Writing optimistic actions</a></li>
+      <li><a href="#writing-the-network-handler">Writing the network handler</a></li>
+      <li><a href="#writing-the-action-updater">Writing the action updater</a></li>
+    </ul>
     <li><a href="#roadmap">Roadmap</a></li>
   </ol>
 </details>
@@ -99,10 +85,7 @@ state changes are handled for you.
 
 ### Built With
 
-This section should list any major frameworks that you built your project using. Leave any add-ons/plugins for the
-acknowledgements section. Here are a few examples.
-
-* [redux](https://redux.js.org/)
+This is a simple project with no external dependencies other than [redux](https://redux.js.org/) as a peer dependency.
 
 <!-- GETTING STARTED -->
 
@@ -119,12 +102,157 @@ is purely for managing data in a redux store, so you will need to have redux alr
 
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos
-work well in this space. You may also link to more resources.
+This library has two main entry points, a wrapper around your root reducer, and a required `configureRuntime` function
+call. Also see `./example` for a minimal demonstration application. 
 
-_For more examples, please refer to the [Documentation](https://example.com)_
+Example usage:
 
+```
+const store = createStore(
+  makeRootReducer(rootReducer /* Your root reducer here */)
+);
 
+configureRuntime({
+  store,
+  /*
+   * Your function which handles mapping your backend entity metadata provided by
+   * optimistic actions to network requests.
+   */
+  networkEffectHandler: networkHandler,
+  /*
+   * Your function which handles updating dependent pending actions.
+   */
+  mapDependentAction: actionUpdater,
+});
+```
+
+### Writing optimistic actions
+
+This library requires you to write actions containing a `offline` property containing metadata about your optimistic
+actions.
+
+Optimistic action example with all available fields:
+
+```
+{
+  /* Normal redux action type */
+  type: 'SOME_ACTION',
+  /* Normal flux-style redux action data */
+  payload: 'some data',
+  
+  /* The field which this library checks for deciding what to do with your optimistic actions. */
+  offline: {
+    /* Provide one of... */
+
+    networkEffect: {
+      // This can be literally anything, the the library will not access anything here.
+      // This field being present on an action object signals to the library that this action
+      // is an optimistic action with a network related side effect.
+    },
+
+    // If dependent === true, this signals to the library that the action depends on data
+    // from a preceding network-related action. Once this action is processed, it will be dispatched
+    // as it is given without doing anything extra, with the "offline" field removed.
+    dependent: true,
+  }
+}
+```
+
+### Writing the network handler
+
+You must provide a function which makes any API calls/network related behaviour, which then resolves to a redux action,
+or nothing (null or undefined).
+
+Example network handler:
+
+```
+// "offlineAction" here will be the optimistic action containing an "offline" field you created
+// earlier
+const networkHandler = async (offlineAction) => {
+  switch (offlineAction.type) {
+    // Some example optimistic actions
+    case CREATE_NOTE:
+      // Here is where you would make a network call to your "note" endpoint in your backend
+      const result = await imaginaryApiCall(offlineAction.offline.networkEffect);
+      // Here you map your result/error to a "resolved" action
+      return {
+        type: CREATE_NOTE_FULFILLED,
+        payload: {
+          // Merged data from your optimistic action/resolved action
+          ...offlineAction.payload,
+          // Imagine the server has returned the fields which it generates, for example
+          // entity ids, timestamps and so on
+          ...result.data
+        }
+      };
+    default:
+      // Returning null or undefined will simply remove your pending action from the queue, with any optimistic
+      // side effects removed. If you want to simply re-apply your optimistic action with no changes coming
+      // from your backend, then you should return the original action/a second "resolved" action containing
+      // the data from the given "offlineAction" payload, without an "offline" field.
+      //
+      // Since this library automatically replays your optimistic actions on top of any resolved actions,
+      // it is required to return something here if you want the optimistic action's changes to be "committed".
+      //
+      // dependent actions (i.e. have offline.dependent === true) do not need to be handled by this function,
+      // these are handled automatically as the queue is processed.
+      return null;
+  }
+};
+```
+
+### Writing the action updater
+You will need to provide a function which updates actions that depend on other optimistic actions for the library to work
+as expected.
+
+For example:
+```
+const actionUpdater = (
+  // This is the original optimistic action which you dispatched originally
+  originalAction,
+  // This is the action you mapped to in your networkHandler
+  fulfilledAction,
+  // This is a pending action which is still to be processed in the queue.
+  // Note that this can also be a dependent action, i.e. it is not just a network-related action.
+  // If the pending action does not depend on the originalAction/fulfilledAction, you should
+  // return it, or something falsy from this function for it to remain unchanged.
+  pendingAction
+) => {
+  switch (originalAction.type) {
+    case CREATE_NOTE:
+      switch (pendingAction.type) {
+        // Imagine you have a dependent action which makes use of a temporary value you
+        // created inside your CREATE_NOTE action, an id for example
+        case SET_CURRENT_NOTE:
+          // If your pending action depends on the original action's id
+          if (pendingAction.payload === originalAction.payload.id) {
+            return {
+              ...pendingAction,
+              // Then we can create a new action with the fulfilled value instead 
+              payload: fulfilledAction.payload.id,
+            };
+          }
+          break;
+      }
+      break;
+    case DELETE_NOTE:
+      switch (pendingAction.type) {
+        case SET_CURRENT_NOTE:
+          if (pendingAction.payload === originalAction.payload.id) {
+            // In this case we have an optimistic action "DELETE_NOTE",
+            // with a dependent action "SET_CURRENT_NOTE". Since the note you depend on
+            // no longer exists, you will likely want to take action to remove references
+            // to the now deleted note from your dependent-optimistic actions.
+            // To simply remove the optimistic "SET_CURRENT_NOTE" action, you can return
+            // the "DELETE_PENDING_ACTION" symbol which is exported by the library.
+            // You can also map to other actions to take special action in the case of a deletion.
+            return DELETE_PENDING_ACTION;
+          }
+      }
+  }
+  return null;
+};
+```
 
 <!-- ROADMAP -->
 
@@ -132,7 +260,8 @@ _For more examples, please refer to the [Documentation](https://example.com)_
 
 - Support for custom redux-store key other than `offlineQueue`
 - Serialisation support/documentation
-- redux-observable support - actions are replayed quite often, need to be able to hide replay-actions from redux-observable
+- redux-observable support - actions are replayed quite often, need to be able to hide replay-actions from
+  redux-observable
 - Support for custom network detector (e.g. for environments other than a browser)
 - Idempotence support via generating unique client-side identifiers to prevent duplicate entities being created for
   example## Acknowledgements
