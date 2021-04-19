@@ -14,6 +14,8 @@
   A library for managing optimistic updates in your redux data store
 </p>
 
+<strong style="color: red">DISCLAIMER: This project is very much a work in progress, I do not recommend that you use it in any real environment.</strong>
+
 
 
 <!-- TABLE OF CONTENTS -->
