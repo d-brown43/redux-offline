@@ -1,6 +1,6 @@
 {
   "name": "offline-queue",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "main": "src/offlineModule",
   "repository": "https://github.com/d-brown43/redux-offline",
   "peerDependencies": {
