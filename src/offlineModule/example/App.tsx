@@ -13,13 +13,15 @@ import {
 import { Folder } from './types';
 import { ChangeEventHandler } from 'react';
 import { getNow } from './utils';
-import { getPendingActions } from '../selectors';
+import { getIsProcessing, getPendingActions } from '../selectors';
 import RenderGraph from '../RenderGraph';
 
 const App = () => {
   const dispatch = useDispatch();
   const currentFolderId = useSelector(getCurrentFolderId);
   const pendingActions = useSelector(getPendingActions);
+
+  const isProcessing = useSelector(getIsProcessing);
 
   const optimisticState = useSelector<RootState>((state) => {
     const { offline, ...rest } = state;
@@ -71,7 +73,15 @@ const App = () => {
       <div>
         <h2>Folders</h2>
         {folders.map((folder) => (
-          <div key={folder.id}>
+          <div
+            key={folder.id}
+            style={{
+              border: '1px solid #333',
+              borderRadius: '4px',
+              padding: '1rem',
+              marginBottom: '1rem',
+            }}
+          >
             <label>
               <input
                 type="radio"
@@ -103,6 +113,9 @@ const App = () => {
       <button disabled={currentFolderId === null} onClick={createNote}>
         Create Note
       </button>
+      <p style={{ marginTop: '1rem' }}>
+        Queue is processing: {isProcessing ? 'true' : 'false'}
+      </p>
       <div
         style={{
           display: 'flex',

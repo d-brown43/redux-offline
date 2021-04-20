@@ -120,7 +120,7 @@ describe('optimistic resolution', () => {
     }
   };
 
-  const mapDependentActions: MapDependentAction = (
+  const mapDependentActions: MapDependentAction<any> = (
     originalAction,
     fulfilledAction,
     pendingAction
