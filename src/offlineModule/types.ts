@@ -60,6 +60,8 @@ type XOR<T, U> = T | U extends object
   ? (Without<T, U> & U) | (Without<U, T> & T)
   : T | U;
 
+type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
 export type OfflineQueueRuntimeConfig<ST, ActionTypes extends Action> = {
   mapDependentAction: MapDependentAction<ActionTypes>;
   networkEffectHandler: NetworkEffectHandler;
@@ -74,5 +76,10 @@ export type OfflineQueueRuntimeConfigInput<
   { dependencyGraph: DependencyGraph<ActionTypes> },
   { mapDependentAction: MapDependentAction<ActionTypes> }
 > &
-  Omit<OfflineQueueRuntimeConfig<ST, ActionTypes>, 'networkDetector'> &
-  Partial<Pick<OfflineQueueRuntimeConfig<ST, ActionTypes>, 'networkDetector'>>;
+  Optional<
+    Omit<
+      OfflineQueueRuntimeConfig<ST, ActionTypes>,
+      'dependencyGraph' | 'mapDependentAction'
+    >,
+    'networkDetector'
+  >;

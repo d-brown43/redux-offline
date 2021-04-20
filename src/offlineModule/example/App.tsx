@@ -1,6 +1,4 @@
 import { useDispatch, useSelector } from 'react-redux';
-// @ts-ignore
-import Graph from 'react-graph-vis';
 import {
   createNote as createNoteAction,
   deleteFolder as deleteFolderAction,
@@ -16,32 +14,7 @@ import { Folder } from './types';
 import { ChangeEventHandler } from 'react';
 import { getNow } from './utils';
 import { getPendingActions } from '../selectors';
-
-const graph = {
-  nodes: dependencyGraph.nodes.map((node, i) => ({
-    id: node.type,
-    label: node.type,
-  })),
-  edges: dependencyGraph.nodes.reduce<{ from: string; to: string }[]>(
-    (acc, node) => {
-      return acc.concat(
-        node.dependencies.map((dependency) => {
-          return {
-            from: dependency.type,
-            to: node.type,
-          };
-        })
-      );
-    },
-    []
-  ),
-};
-
-const graphOptions = {};
-
-const events = {
-  select: () => {},
-};
+import RenderGraph from '../RenderGraph';
 
 const App = () => {
   const dispatch = useDispatch();
@@ -157,7 +130,7 @@ const App = () => {
       </div>
       <div style={{ marginTop: '3rem', height: '700px' }}>
         <h2>Redux action dependencies</h2>
-        <Graph graph={graph} options={graphOptions} events={events} />
+        <RenderGraph dependencyGraph={dependencyGraph} />
       </div>
     </div>
   );
