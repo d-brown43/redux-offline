@@ -6,6 +6,7 @@ import {
 } from './test/utils';
 import configureRuntime from './configureRuntime';
 import { getIsOnline } from './selectors';
+import createDependencyGraph from './dependencyGraph';
 
 it('subscribes to offline/online events', () => {
   setOnlineStatusInitial(false);
@@ -14,6 +15,7 @@ it('subscribes to offline/online events', () => {
   configureRuntime({
     networkEffectHandler: () => Promise.resolve({ type: 'ACTION' }),
     store,
+    dependencyGraph: createDependencyGraph([]),
   });
   expect(getIsOnline(store.getState())).toEqual(false);
 

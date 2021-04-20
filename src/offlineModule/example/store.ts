@@ -2,8 +2,7 @@ import { Action, createStore } from 'redux';
 import configureRuntime from '../configureRuntime';
 import makeRootReducer from '../makeRootReducer';
 import networkHandler from './networkHandler';
-import rootReducer from './redux';
-import actionUpdater from './actionUpdater';
+import rootReducer, { dependencyGraph } from './redux';
 
 const configureStore = () => {
   const store = createStore<ReturnType<typeof rootReducer>, Action, any, any>(
@@ -15,7 +14,7 @@ const configureStore = () => {
   configureRuntime({
     store,
     networkEffectHandler: networkHandler,
-    mapDependentAction: actionUpdater,
+    dependencyGraph,
   });
 
   return store;

@@ -1,5 +1,6 @@
-import { Action, AnyAction, Store } from 'redux';
-import {DELETE_PENDING_ACTION} from "./utils";
+import { Action, Store } from 'redux';
+import { DELETE_PENDING_ACTION } from './utils';
+import { DependencyGraph } from './dependencyGraph';
 
 export type NetworkEffect = {};
 
@@ -39,14 +40,34 @@ export type NetworkEffectHandler = (
 
 export type StoreType<ST> = Store<ST, MaybeOfflineAction>;
 
-export type MapDependentAction = (
-  originalAction: OfflineAction,
-  fulfilledAction: AnyAction,
-  pendingAction: OfflineAction
-) => OfflineAction | null | typeof DELETE_PENDING_ACTION;
+export type MapDependentActionFunction<ActionTypes> = (
+  originalAction: ActionTypes,
+  fulfilledAction: ActionTypes,
+  pendingAction: ActionTypes
+) => ActionTypes | null | typeof DELETE_PENDING_ACTION;
 
-export type OfflineQueueRuntimeConfig<ST> = {
+export type MapDependentAction<ActionTypes> =
+  | typeof DELETE_PENDING_ACTION
+  | MapDependentActionFunction<ActionTypes>;
+
+type Without<T, U> = { [P in Exclude<keyof T, keyof U>]?: never };
+type XOR<T, U> = T | U extends object
+  ? (Without<T, U> & U) | (Without<U, T> & T)
+  : T | U;
+
+export type OfflineQueueRuntimeConfigInput<
+  ST,
+  ActionTypes extends Action
+> = XOR<
+  { dependencyGraph: DependencyGraph<ActionTypes> },
+  { mapDependentAction: MapDependentAction<ActionTypes> }
+> & {
   networkEffectHandler: NetworkEffectHandler;
-  mapDependentAction: MapDependentAction;
+  store: StoreType<ST>;
+};
+
+export type OfflineQueueRuntimeConfig<ST, ActionTypes extends Action> = {
+  mapDependentAction: MapDependentAction<ActionTypes>;
+  networkEffectHandler: NetworkEffectHandler;
   store: StoreType<ST>;
 };

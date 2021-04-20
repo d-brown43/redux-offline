@@ -8,7 +8,6 @@ import {
   RootState,
   getCurrentFolderId,
   setCurrentFolderId,
-  getLastError,
 } from './redux';
 import { Folder } from './types';
 import { ChangeEventHandler } from 'react';

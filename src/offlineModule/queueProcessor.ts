@@ -1,4 +1,4 @@
-import { AnyAction } from 'redux';
+import { Action, AnyAction } from 'redux';
 import { OfflineAction, OfflineQueueRuntimeConfig, RootState } from './types';
 import {
   getIsOnline,
@@ -16,18 +16,24 @@ import {
 } from './actions';
 import { DELETE_PENDING_ACTION } from './utils';
 
-const updateDependentActions = <ST extends RootState>(
-  remainingActions: OfflineAction[],
-  originalAction: OfflineAction,
-  fulfilledAction: AnyAction,
-  config: OfflineQueueRuntimeConfig<ST>
+const updateDependentActions = <
+  ST extends RootState,
+  ActionTypes extends Action
+>(
+  remainingActions: ActionTypes[],
+  originalAction: ActionTypes,
+  fulfilledAction: ActionTypes,
+  config: OfflineQueueRuntimeConfig<ST, ActionTypes>
 ) => {
-  return remainingActions.reduce<OfflineAction[]>((acc, pendingAction) => {
-    const mappedAction = config.mapDependentAction(
-      originalAction,
-      fulfilledAction,
-      pendingAction
-    );
+  return remainingActions.reduce<ActionTypes[]>((acc, pendingAction) => {
+    const mappedAction =
+      config.mapDependentAction === DELETE_PENDING_ACTION
+        ? DELETE_PENDING_ACTION
+        : config.mapDependentAction(
+            originalAction,
+            fulfilledAction,
+            pendingAction
+          );
     if (mappedAction !== DELETE_PENDING_ACTION) {
       return acc.concat([mappedAction ? mappedAction : pendingAction]);
     }
@@ -43,8 +49,11 @@ const isDependentAction = (action: OfflineAction) => {
   return action.offline.dependent === true;
 };
 
-export const processQueue = async <ST extends RootState>(
-  config: OfflineQueueRuntimeConfig<ST>
+export const processQueue = async <
+  ST extends RootState,
+  ActionTypes extends Action
+>(
+  config: OfflineQueueRuntimeConfig<ST, ActionTypes>
 ): Promise<any> => {
   const getState = () => config.store.getState();
 
@@ -89,8 +98,8 @@ export const processQueue = async <ST extends RootState>(
   return Promise.resolve();
 };
 
-const queueProcessor = <ST extends RootState>(
-  config: OfflineQueueRuntimeConfig<ST>
+const queueProcessor = <ST extends RootState, ActionTypes extends Action>(
+  config: OfflineQueueRuntimeConfig<ST, ActionTypes>
 ) => {
   const startIfReady = () => {
     const state = config.store.getState();

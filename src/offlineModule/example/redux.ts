@@ -1,8 +1,10 @@
-import { AnyAction, combineReducers } from 'redux';
+import { combineReducers } from 'redux';
 import offlineReducer from '../offlineReducer';
 import { DataOfflineAction, OfflineAction, OfflineState } from '../types';
 import { getNow, getRandomId } from './utils';
 import { Folder, Note } from './types';
+import createDependencyGraph from '../dependencyGraph';
+import { DELETE_PENDING_ACTION } from '../utils';
 
 export const CREATE_NOTE = 'CREATE_NOTE';
 export const CREATE_NOTE_RESOLVED = 'CREATE_NOTE_RESOLVED';
@@ -11,8 +13,85 @@ export const CREATE_FOLDER_RESOLVED = 'CREATE_FOLDER_RESOLVED';
 export const DELETE_FOLDER = 'DELETE_FOLDER';
 export const DELETE_FOLDER_RESOLVED = 'DELETE_FOLDER_RESOLVED';
 export const DELETE_FOLDER_ERROR = 'DELETE_FOLDER_ERROR';
-
 export const SET_CURRENT_FOLDER_ID = 'SET_CURRENT_FOLDER_ID';
+
+type ActionTypes =
+  | ReturnType<typeof createNote>
+  | ReturnType<typeof createNoteResolved>
+  | ReturnType<typeof createFolder>
+  | ReturnType<typeof createFolderResolved>
+  | ReturnType<typeof deleteFolder>
+  | ReturnType<typeof deleteFolderResolved>
+  | ReturnType<typeof deleteFolderError>
+  | ReturnType<typeof setCurrentFolderId>;
+
+const isPayloadEqual = <
+  PA extends ActionTypes['payload'],
+  PB extends ActionTypes['payload']
+>(
+  condition: (originalPayload: PA, pendingPayload: PB) => boolean
+) => {
+  return (action: ActionTypes, pendingAction: ActionTypes) =>
+    condition(action.payload, pendingAction.payload);
+};
+
+const noteDependsOnFolder = (folder: Folder, note: Note) =>
+  note.folderId === folder.id;
+
+const isFoldersEqual = (folderA: Folder, folderB: Folder) =>
+  folderA.id === folderB.id;
+
+export const dependencyGraph = createDependencyGraph<ActionTypes>([
+  { type: SET_CURRENT_FOLDER_ID, dependencies: [] },
+  { type: CREATE_NOTE, dependencies: [] },
+  {
+    type: CREATE_FOLDER,
+    dependencies: [
+      {
+        type: CREATE_NOTE,
+        dependsOn: isPayloadEqual(noteDependsOnFolder),
+        updateDependency: (originalAction, fulfilledAction, pendingAction) =>
+          createNote({
+            ...pendingAction.payload,
+            folderId: fulfilledAction.payload.id,
+          }),
+      },
+      {
+        type: DELETE_FOLDER,
+        dependsOn: isPayloadEqual(isFoldersEqual),
+        updateDependency: (originalAction, fulfilledAction, pendingAction) =>
+          deleteFolder({
+            ...pendingAction.payload,
+            id: fulfilledAction.payload.id,
+          }),
+      },
+      {
+        type: SET_CURRENT_FOLDER_ID,
+        dependsOn: (action, pendingAction) =>
+          pendingAction.payload === action.payload.id,
+        updateDependency: (originalAction, fulfilledAction) =>
+          setCurrentFolderId(fulfilledAction.payload.id),
+      },
+    ],
+  },
+  {
+    type: DELETE_FOLDER,
+    dependencies: [
+      {
+        type: SET_CURRENT_FOLDER_ID,
+        dependsOn: (action, pendingAction) =>
+          pendingAction.payload === action.payload.id,
+        updateDependency: DELETE_PENDING_ACTION,
+      },
+      {
+        type: CREATE_NOTE,
+        dependsOn: (action, pendingAction) =>
+          pendingAction.payload.folderId === action.payload.id,
+        updateDependency: DELETE_PENDING_ACTION,
+      },
+    ],
+  },
+]);
 
 type State = {
   notes: { [k: string]: Note };
@@ -41,7 +120,7 @@ const mergeEntity = <T extends { id: string }>(
   [entity.id]: entity,
 });
 
-const reducer = (state = initialState, action: AnyAction) => {
+const reducer = (state = initialState, action: ActionTypes) => {
   switch (action.type) {
     case CREATE_NOTE:
     case CREATE_NOTE_RESOLVED:
