@@ -264,6 +264,5 @@ const actionUpdater = (
 - Serialisation support/documentation
 - redux-observable support - actions are replayed quite often, need to be able to hide replay-actions from
   redux-observable
-- Support for custom network detector (e.g. for environments other than a browser)
 - Idempotence support via generating unique client-side identifiers to prevent duplicate entities being created for
   example## Acknowledgements

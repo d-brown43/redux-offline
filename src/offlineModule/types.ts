@@ -2,6 +2,11 @@ import { Action, Store } from 'redux';
 import { DELETE_PENDING_ACTION } from './utils';
 import { DependencyGraph } from './dependencyGraph';
 
+export type NetworkDetector = (
+  offlineHandler: (isOnline: boolean) => void
+) => void;
+
+// TODO Use generics to provide type safety on network effects
 export type NetworkEffect = {};
 
 export type OfflineEffects = {
@@ -55,19 +60,19 @@ type XOR<T, U> = T | U extends object
   ? (Without<T, U> & U) | (Without<U, T> & T)
   : T | U;
 
+export type OfflineQueueRuntimeConfig<ST, ActionTypes extends Action> = {
+  mapDependentAction: MapDependentAction<ActionTypes>;
+  networkEffectHandler: NetworkEffectHandler;
+  store: StoreType<ST>;
+  networkDetector: NetworkDetector;
+};
+
 export type OfflineQueueRuntimeConfigInput<
   ST,
   ActionTypes extends Action
 > = XOR<
   { dependencyGraph: DependencyGraph<ActionTypes> },
   { mapDependentAction: MapDependentAction<ActionTypes> }
-> & {
-  networkEffectHandler: NetworkEffectHandler;
-  store: StoreType<ST>;
-};
-
-export type OfflineQueueRuntimeConfig<ST, ActionTypes extends Action> = {
-  mapDependentAction: MapDependentAction<ActionTypes>;
-  networkEffectHandler: NetworkEffectHandler;
-  store: StoreType<ST>;
-};
+> &
+  Omit<OfflineQueueRuntimeConfig<ST, ActionTypes>, 'networkDetector'> &
+  Partial<Pick<OfflineQueueRuntimeConfig<ST, ActionTypes>, 'networkDetector'>>;
