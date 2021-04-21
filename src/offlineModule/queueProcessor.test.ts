@@ -64,7 +64,7 @@ describe('basic functionality', () => {
 
     dispatchOnlineEvent();
 
-    await waitFor(() => {
+    await waitFor(store, () => {
       expect(getPendingActions(store.getState()).length).toEqual(0);
       expect(getIsProcessing(store.getState())).toEqual(false);
     });
@@ -79,7 +79,7 @@ describe('basic functionality', () => {
     dispatchOnlineEvent();
     dispatchOfflineEvent();
 
-    await waitFor(() => {
+    await waitFor(store, () => {
       expect(getIsProcessing(store.getState())).toEqual(false);
       expect(getPendingActions(store.getState()).length).toEqual(1);
     });
@@ -299,7 +299,7 @@ describe('optimistic resolution', () => {
 
     store.dispatch(createNote('test note'));
 
-    await waitFor(() => {
+    await waitFor(store, () => {
       const notes: any[] = getNotes(store);
       expect(notes.length).toEqual(1);
       expect(notes[0].id).toEqual('temp_id');
@@ -307,7 +307,7 @@ describe('optimistic resolution', () => {
 
     dispatchOnlineEvent();
 
-    await waitFor(() => {
+    await waitFor(store, () => {
       const notes: any[] = getNotes(store);
       expect(notes.length).toEqual(1);
       expect(notes[0].id).toEqual('fulfilled_id');
@@ -333,7 +333,7 @@ describe('optimistic resolution', () => {
 
     store.dispatch(createNote('test note'));
 
-    await waitFor(() => {
+    await waitFor(store, () => {
       const notes: any[] = getNotes(store);
       expect(notes.length).toEqual(1);
       expect(notes[0].id).toEqual('temp_id');
@@ -341,7 +341,7 @@ describe('optimistic resolution', () => {
 
     dispatchOnlineEvent();
 
-    await waitFor(() => {
+    await waitFor(store, () => {
       const notes = getNotes(store);
       expect(notes.length).toEqual(0);
     });
@@ -356,7 +356,7 @@ describe('optimistic resolution', () => {
 
     dispatchOnlineEvent();
 
-    await waitFor(() => {
+    await waitFor(store, () => {
       const notes: any[] = getNotes(store);
       expect(notes.length).toEqual(1);
       expect(notes[0].name).toEqual('updated name');
@@ -372,7 +372,7 @@ describe('optimistic resolution', () => {
 
     dispatchOnlineEvent();
 
-    await waitFor(() => {
+    await waitFor(store, () => {
       const notes: any[] = getNotes(store);
       expect(notes[0].id).toEqual('fulfilled_id');
       expect(store.getState().notes.dependentId).toEqual(notes[0].id);
@@ -390,7 +390,7 @@ describe('optimistic resolution', () => {
 
     dispatchOnlineEvent();
 
-    await waitFor(() => {
+    await waitFor(store, () => {
       const notes = getNotes(store);
       expect(notes.length).toEqual(0);
       expect(store.getState().notes.dependentId).toBeNull();

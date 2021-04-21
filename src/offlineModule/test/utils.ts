@@ -1,6 +1,6 @@
-import {OfflineState, RootState} from "../types";
-import {combineReducers, createStore} from "redux";
-import offlineReducer from "../offlineReducer";
+import { OfflineState, RootState } from '../types';
+import { combineReducers, createStore, Store } from 'redux';
+import offlineReducer from '../offlineReducer';
 
 export const setOnlineStatusInitial = (isOnline: boolean) => {
   Object.defineProperty(navigator, 'onLine', {
@@ -19,7 +19,9 @@ export const dispatchOfflineEvent = () => {
   window.dispatchEvent(event);
 };
 
-export const makeRootState = (state: OfflineState): RootState => ({ offline: state });
+export const makeRootState = (state: OfflineState): RootState => ({
+  offline: state,
+});
 
 export const createTestStore = () => {
   const rootReducer = combineReducers({
@@ -28,23 +30,37 @@ export const createTestStore = () => {
   return createStore(rootReducer);
 };
 
-export const waitFor = (assertion: () => void, intervalLength = 100, timeout = 3000) => {
+export const waitFor = (
+  store: Store,
+  assertion: () => void,
+  timeout = 3000
+) => {
   return new Promise((resolve, reject) => {
-    let timerId: NodeJS.Timeout;
     let lastError: any = null;
+    let timerId: NodeJS.Timeout;
+    let unsubscribe: (() => void) | null = null;
 
-    const intervalId = setInterval(() => {
+    const doAssertion = () => {
       try {
         assertion();
         clearTimeout(timerId);
+        if (unsubscribe) {
+          unsubscribe();
+        }
         resolve(null);
       } catch (e) {
         lastError = e;
       }
-    }, intervalLength);
+    };
+
+    doAssertion();
+
+    unsubscribe = store.subscribe(() => doAssertion());
 
     timerId = setTimeout(() => {
-      clearInterval(intervalId);
+      if (unsubscribe) {
+        unsubscribe();
+      }
       reject(!lastError ? 'Timeout in waitFor reached' : lastError);
     }, timeout);
   });
