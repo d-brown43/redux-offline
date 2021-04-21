@@ -1,10 +1,14 @@
 import { combineReducers } from 'redux';
-import offlineReducer from '../offlineReducer';
-import { DataOfflineAction, OfflineAction, OfflineState } from '../types';
+import {
+  DataOfflineAction,
+  OfflineAction,
+  OfflineState,
+  DELETE_PENDING_ACTION,
+  createDependencyGraph,
+  offlineReducer,
+} from '../offlineModule';
 import { getNow, getRandomId } from './utils';
 import { Folder, Note } from './types';
-import createDependencyGraph from '../dependencyGraph';
-import { DELETE_PENDING_ACTION } from '../utils';
 
 export const CREATE_NOTE = 'CREATE_NOTE';
 export const CREATE_NOTE_RESOLVED = 'CREATE_NOTE_RESOLVED';
@@ -267,6 +271,9 @@ export const getLastError = (state: RootState) => state.myState.latestError;
 
 const rootReducer = combineReducers({
   myState: reducer,
+  // TODO Encapsulate the offline reducer under the root reducer enhancer,
+  // to prevent having the user to have to define it themselves under the
+  // "offline" key in their state
   offline: offlineReducer,
 });
 

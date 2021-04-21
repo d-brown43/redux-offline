@@ -3,6 +3,7 @@ import {
   OfflineQueueRuntimeConfig,
   OfflineQueueRuntimeConfigInput,
   RootState,
+  Optional,
 } from './types';
 import networkDetector from './networkDetector';
 import { getIsOnline } from './selectors';
@@ -10,6 +11,7 @@ import { goOffline, goOnline } from './actions';
 import queueProcessor from './queueProcessor';
 import createMapDependentActions from './createDefaultActionMapper';
 
+// Subscribe to the network detector and dispatch online states to the store
 const mapNetworkToState = <ST extends RootState, ActionTypes extends Action>(
   config: OfflineQueueRuntimeConfig<ST, ActionTypes>
 ) => {
@@ -25,16 +27,10 @@ const mapNetworkToState = <ST extends RootState, ActionTypes extends Action>(
 const configureRuntime = <ST extends RootState, ActionTypes extends Action>(
   config: OfflineQueueRuntimeConfigInput<ST, ActionTypes>
 ) => {
-  const intermediateConfig: Omit<
+  const intermediateConfig: Optional<
     OfflineQueueRuntimeConfig<ST, ActionTypes>,
     'mapDependentAction' | 'networkDetector'
-  > &
-    Partial<
-      Pick<
-        OfflineQueueRuntimeConfig<ST, ActionTypes>,
-        'mapDependentAction' | 'networkDetector'
-      >
-    > = config;
+  > = { ...config };
 
   if (!intermediateConfig.mapDependentAction) {
     intermediateConfig.mapDependentAction = createMapDependentActions(config);
@@ -43,6 +39,7 @@ const configureRuntime = <ST extends RootState, ActionTypes extends Action>(
     intermediateConfig.networkDetector = networkDetector;
   }
 
+  // We've just ensured these optional fields are now not optional
   const runtimeConfig: OfflineQueueRuntimeConfig<
     ST,
     ActionTypes

@@ -1,1 +1,1 @@
-import './offlineModule/example';
+import './example';

@@ -1,6 +1,5 @@
 import { Action, createStore } from 'redux';
-import configureRuntime from '../configureRuntime';
-import makeRootReducer from '../makeRootReducer';
+import { configureRuntime, makeRootReducer } from '../offlineModule';
 import networkHandler from './networkHandler';
 import rootReducer, { dependencyGraph } from './redux';
 

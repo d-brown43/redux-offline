@@ -1,5 +1,5 @@
 import createMapDependentActions from './createDefaultActionMapper';
-import createDependencyGraph from './dependencyGraph';
+import createDependencyGraph from './dependencyGraphFactory';
 
 it('returns null if no dependency found', () => {
   const mapper = createMapDependentActions({

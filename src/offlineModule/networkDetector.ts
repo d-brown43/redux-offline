@@ -1,4 +1,4 @@
-import {NetworkDetector} from "./types";
+import { NetworkDetector } from './types';
 
 const networkDetector: NetworkDetector = (offlineHandler) => {
   const updateOnlineStatus = (isOnline: boolean) => () => {

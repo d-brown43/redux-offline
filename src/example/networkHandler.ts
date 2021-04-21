@@ -1,4 +1,4 @@
-import { NetworkEffectHandler } from '../types';
+import { NetworkEffectHandler } from '../offlineModule';
 import {
   CREATE_FOLDER,
   CREATE_NOTE,
@@ -35,10 +35,18 @@ const networkHandler: NetworkEffectHandler = async (offlineAction) => {
   );
   switch (offlineAction.type) {
     case CREATE_NOTE:
-      return delay(createNoteResolved(replaceIdAndDate(offlineAction.payload)));
+      return delay(
+        createNoteResolved({
+          ...replaceIdAndDate(offlineAction.payload),
+          name: offlineAction.payload.name + ' - hello from server',
+        })
+      );
     case CREATE_FOLDER:
       return delay(
-        createFolderResolved(replaceIdAndDate(offlineAction.payload))
+        createFolderResolved({
+          ...replaceIdAndDate(offlineAction.payload),
+          name: offlineAction.payload.name + ' - hello from server',
+        })
       );
     case DELETE_FOLDER: {
       if (Math.random() >= 0.5) {

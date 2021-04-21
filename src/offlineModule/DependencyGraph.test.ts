@@ -1,5 +1,5 @@
-import createDependencyGraph from './dependencyGraph';
-import { Node } from './dependencyGraph';
+import { Node } from './types';
+import createDependencyGraph from './dependencyGraphFactory';
 
 const someActionNode: Node = {
   type: 'SOME_ACTION',
@@ -39,13 +39,6 @@ const graph = createDependencyGraph([
   thirdAction,
 ]);
 
-it('throws an error if duplicate node types are found', () => {
-  expect(() => createDependencyGraph([
-    { type: 'SOME_ACTION', dependencies: [] },
-    { type: 'SOME_ACTION', dependencies: [] },
-  ])).toThrow();
-});
-
 it('returns dependencies of a given type', () => {
   expect(graph.getDependenciesOf('SOME_ACTION')).toEqual(
     someActionNode.dependencies
@@ -55,10 +48,11 @@ it('returns dependencies of a given type', () => {
   );
 });
 
-it('returns dependencies for a given type', () => {
-  expect(graph.getDependsOn('SOME_ACTION')).toEqual([
-    someActionNode,
-    otherActionNode,
-  ]);
-  expect(graph.getDependsOn('OTHER_ACTION')).toEqual([]);
+it('returns the first dependency', () => {
+  expect(
+    graph.getFirstDependencyOfWithType('OTHER_ACTION', 'SOME_ACTION')
+  ).toEqual(otherActionNode.dependencies[0]);
+  expect(
+    graph.getFirstDependencyOfWithType('OTHER_ACTION', 'THIRD_ACTION')
+  ).toEqual(otherActionNode.dependencies[1]);
 });

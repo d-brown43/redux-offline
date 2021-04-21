@@ -5,8 +5,8 @@ import {
   setOnlineStatusInitial,
 } from './test/utils';
 import configureRuntime from './configureRuntime';
-import { getIsOnline } from './selectors';
-import createDependencyGraph from './dependencyGraph';
+import { getIsOnline, getIsProcessing } from './selectors';
+import createDependencyGraph from './dependencyGraphFactory';
 
 it('subscribes to offline/online events', () => {
   setOnlineStatusInitial(false);
@@ -27,4 +27,29 @@ it('subscribes to offline/online events', () => {
 
   dispatchOnlineEvent();
   expect(getIsOnline(store.getState())).toEqual(true);
+});
+
+it('starts the queue processor', () => {
+  setOnlineStatusInitial(false);
+  const store = createTestStore();
+
+  const networkHandler = () => new Promise<null>(() => {});
+
+  configureRuntime({
+    networkEffectHandler: networkHandler,
+    store,
+    dependencyGraph: createDependencyGraph([]),
+  });
+
+  store.dispatch({
+    type: 'some_optimistic_action',
+    payload: {},
+    offline: {
+      networkEffect: {},
+    },
+  });
+
+  dispatchOnlineEvent();
+
+  expect(getIsProcessing(store.getState())).toEqual(true);
 });

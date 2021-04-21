@@ -1,6 +1,6 @@
 import { Action, Store } from 'redux';
 import { DELETE_PENDING_ACTION } from './utils';
-import { DependencyGraph } from './dependencyGraph';
+import DependencyGraph from './DependencyGraph';
 
 export type NetworkDetector = (
   offlineHandler: (isOnline: boolean) => void
@@ -60,7 +60,7 @@ type XOR<T, U> = T | U extends object
   ? (Without<T, U> & U) | (Without<U, T> & T)
   : T | U;
 
-type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
 export type OfflineQueueRuntimeConfig<ST, ActionTypes extends Action> = {
   mapDependentAction: MapDependentAction<ActionTypes>;
@@ -83,3 +83,20 @@ export type OfflineQueueRuntimeConfigInput<
     >,
     'networkDetector'
   >;
+
+export type Dependency<ActionTypes extends Action = Action> = {
+  type: ActionTypes['type'];
+  dependsOn: <A extends ActionTypes, B extends ActionTypes>(
+    action: A,
+    pendingAction: B
+  ) => boolean;
+  updateDependency: MapDependentAction<ActionTypes>;
+};
+
+export type Node<
+  ActionTypes extends Action = Action,
+  T extends ActionTypes['type'] = string
+> = {
+  type: T;
+  dependencies: Dependency<ActionTypes>[];
+};

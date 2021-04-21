@@ -1,10 +1,16 @@
 import { Action } from 'redux';
-import {MapDependentActionFunction, OfflineQueueRuntimeConfigInput} from './types';
+import {
+  MapDependentActionFunction,
+  OfflineQueueRuntimeConfigInput,
+} from './types';
 import { DELETE_PENDING_ACTION } from './utils';
-import { Dependency } from './dependencyGraph';
 
 const createMapDependentActions = <ST, ActionTypes extends Action>(
-  config: Omit<OfflineQueueRuntimeConfigInput<ST, ActionTypes>, 'store' | 'networkEffectHandler'>
+  // We only need some parts of the config
+  config: Omit<
+    OfflineQueueRuntimeConfigInput<ST, ActionTypes>,
+    'store' | 'networkEffectHandler'
+  >
 ): MapDependentActionFunction<ActionTypes> => {
   const graph = config.dependencyGraph;
   if (!graph) {
@@ -15,11 +21,10 @@ const createMapDependentActions = <ST, ActionTypes extends Action>(
 
   return (originalAction, fulfilledAction, pendingAction) => {
     const node = graph.getNode(originalAction.type);
-    const dependencyOf = graph.getDependenciesOf(
+    const dependencyOf = graph.getFirstDependencyOfWithType(
       originalAction.type,
-      (dependency: Dependency<ActionTypes>) =>
-        dependency.type === pendingAction.type
-    )[0];
+      pendingAction.type
+    );
     if (
       dependencyOf &&
       node &&

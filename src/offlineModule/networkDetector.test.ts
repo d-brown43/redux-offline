@@ -1,16 +1,19 @@
-import networkDetector from "./networkDetector";
-import {dispatchOfflineEvent, dispatchOnlineEvent, setOnlineStatusInitial} from "./test/utils";
+import networkDetector from './networkDetector';
+import {
+  dispatchOfflineEvent,
+  dispatchOnlineEvent,
+  setOnlineStatusInitial,
+} from './test/utils';
 
-it.each([
-  [true],
-  [false],
-])
-('calls the callback initially with current online status', (initialValue) => {
-  setOnlineStatusInitial(initialValue);
-  const detector = jest.fn();
-  networkDetector(detector);
-  expect(detector).toHaveBeenCalledWith(initialValue);
-});
+it.each([[true], [false]])(
+  'calls the callback initially with current online status',
+  (initialValue) => {
+    setOnlineStatusInitial(initialValue);
+    const detector = jest.fn();
+    networkDetector(detector);
+    expect(detector).toHaveBeenCalledWith(initialValue);
+  }
+);
 
 it('calls given callback with true when online', () => {
   setOnlineStatusInitial(false);

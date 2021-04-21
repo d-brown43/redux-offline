@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 // @ts-ignore
 import Graph from 'react-graph-vis';
-import { DependencyGraph } from './dependencyGraph';
+import DependencyGraph from './DependencyGraph';
 
 const graphOptions = {};
 
@@ -11,10 +11,10 @@ type Props = {
   dependencyGraph: DependencyGraph<any>;
 };
 
-const RenderGraph = ({ dependencyGraph }: Props) => {
-  const graph = useMemo(
+export const useGraph = (dependencyGraph: DependencyGraph<any>) => {
+  return useMemo(
     () => ({
-      nodes: dependencyGraph.nodes.map((node, i) => ({
+      nodes: dependencyGraph.nodes.map((node) => ({
         id: node.type,
         label: node.type,
       })),
@@ -34,7 +34,10 @@ const RenderGraph = ({ dependencyGraph }: Props) => {
     }),
     [dependencyGraph]
   );
+};
 
+const RenderGraph = ({ dependencyGraph }: Props) => {
+  const graph = useGraph(dependencyGraph);
   return <Graph graph={graph} options={graphOptions} events={events} />;
 };
 

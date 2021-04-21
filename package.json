@@ -1,6 +1,6 @@
 {
   "name": "offline-queue",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "main": "src/offlineModule",
   "repository": "https://github.com/d-brown43/redux-offline",
   "peerDependencies": {
@@ -12,6 +12,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "test:watch": "react-scripts test --watch",
+    "test:coverage": "CI=true npm run test -- --coverage",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

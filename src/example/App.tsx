@@ -1,4 +1,5 @@
 import { useDispatch, useSelector } from 'react-redux';
+import { ChangeEventHandler, useState } from 'react';
 import {
   createNote as createNoteAction,
   deleteFolder as deleteFolderAction,
@@ -11,15 +12,22 @@ import {
   dependencyGraph,
 } from './redux';
 import { Folder } from './types';
-import { ChangeEventHandler } from 'react';
-import { getNow } from './utils';
-import { getIsProcessing, getPendingActions } from '../selectors';
-import RenderGraph from '../RenderGraph';
+import {
+  getIsProcessing,
+  getPendingActions,
+  RenderGraph,
+} from '../offlineModule';
 
 const App = () => {
   const dispatch = useDispatch();
   const currentFolderId = useSelector(getCurrentFolderId);
   const pendingActions = useSelector(getPendingActions);
+
+  const [folderCount, setFolderCount] = useState(0);
+  const [noteCount, setNoteCount] = useState(0);
+
+  const incrementFolderCount = () => setFolderCount((prev) => prev + 1);
+  const incrementNoteCount = () => setNoteCount((prev) => prev + 1);
 
   const isProcessing = useSelector(getIsProcessing);
 
@@ -48,18 +56,20 @@ const App = () => {
       dispatch(
         createNoteAction({
           folderId: currentFolderId,
-          name: `Note created at ${getNow()}`,
+          name: `Note ${noteCount}`,
         })
       );
+      incrementNoteCount();
     }
   };
 
   const createFolder = () => {
     dispatch(
       createFolderAction({
-        name: `Folder created at ${getNow()}`,
+        name: `Folder ${folderCount}`,
       })
     );
+    incrementFolderCount();
   };
 
   const deleteFolder = (folder: Folder) => {
